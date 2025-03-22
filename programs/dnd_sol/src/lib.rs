@@ -48,3 +48,20 @@ pub struct Character {
     pub max_health: u16,
 }
 
+}
+impl Character {
+    pub const SPACE: usize = 32 + // pubkey
+                             50 + // name (variable, estimated)
+                             20 + // class (variable, estimated)
+                             1 +  // level
+                             4 +  // experience
+                             1 +  // strength
+                             1 +  // dexterity
+                             1 +  // constitution
+                             1 +  // intelligence
+                             1 +  // wisdom
+                             1 +  // charisma
+                             2 +  // health
+                             2;   // max_health
+
+}
