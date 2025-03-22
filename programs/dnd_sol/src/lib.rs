@@ -115,6 +115,6 @@ impl Character {
 
 #[error_code]
 pub enum ErrorCode {
-    #[msg("Character stats are too low")]
+    #[msg("Character stats are too high")]
     StatsTooHigh,
 }
