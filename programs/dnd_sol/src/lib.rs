@@ -14,3 +14,19 @@ pub mod dnd_sol {
 
 #[derive(Accounts)]
 pub struct Initialize {}
+
+#[derive(Accounts)]
+pub struct CreateCharacter<'info> {
+    #[account(
+        init,
+        payer = player,
+        space = 8 + Character::SPACE
+    )]
+    pub character: Account<'info, Character>,
+
+    #[account(mut)]
+    pub player: Signer<'info>,
+
+    pub system_program: Program<'info, System>,
+}
+
