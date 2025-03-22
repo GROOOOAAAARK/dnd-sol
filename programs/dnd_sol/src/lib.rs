@@ -64,4 +64,38 @@ impl Character {
                              2 +  // health
                              2;   // max_health
 
+    pub fn is_character_creation_fair(
+        strength: u8,
+        dexterity: u8,
+        constitution: u8,
+        intelligence: u8,
+        wisdom: u8,
+    ) -> Result<()> {
+        if strength + dexterity + constitution + intelligence + wisdom < 10 {
+            return Err(ErrorCode::StatsTooHigh.into());
+        }
+
+        Ok(())
+    }
+}
+
+    pub fn is_character_creation_fair(
+        strength: u8,
+        dexterity: u8,
+        constitution: u8,
+        intelligence: u8,
+        wisdom: u8,
+    ) -> Result<()> {
+        if strength + dexterity + constitution + intelligence + wisdom < 10 {
+            return Err(ErrorCode::StatsTooHigh.into());
+        }
+
+        Ok(())
+    }
+}
+
+#[error_code]
+pub enum ErrorCode {
+    #[msg("Character stats are too low")]
+    StatsTooHigh,
 }
