@@ -30,3 +30,21 @@ pub struct CreateCharacter<'info> {
     pub system_program: Program<'info, System>,
 }
 
+#[account]
+#[derive(Default)]
+pub struct Character {
+    pub player: Pubkey,
+    pub name: String,
+    pub character_class: String,
+    pub level: u8,
+    pub experience: u32,
+    pub strength: u8,
+    pub dexterity: u8,
+    pub constitution: u8,
+    pub intelligence: u8,
+    pub wisdom: u8,
+    pub charisma: u8,
+    pub health: u16,
+    pub max_health: u16,
+}
+
