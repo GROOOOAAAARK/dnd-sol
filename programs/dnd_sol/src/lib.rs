@@ -135,9 +135,24 @@ impl Character {
         character.health = 10 + constitution as u16;
         character.max_health = character.health;
 
+        if !character._is_character_creation_fair()? {
+            return Err(ErrorCode::CharacterCreationNotFair.into());
+        }
+
         ctx.accounts.character.character = character.clone();
         ctx.accounts.character.player = ctx.accounts.player.key();
         Ok(character.clone())
+    }
+
+    fn _is_character_creation_fair(&self) -> Result<bool> {
+        let total_stats = self.strength + self.dexterity + self.constitution + self.intelligence + self.wisdom + self.charisma;
+        if total_stats > 10 {
+            return Err(ErrorCode::StatsTooHigh.into());
+        }
+        if total_stats < 10 {
+            return Err(ErrorCode::StatsTooLow.into());
+        }
+        Ok(true)
     }
 }
 
@@ -147,4 +162,6 @@ pub enum ErrorCode {
     StatsTooHigh,
     #[msg("Character stats are too low")]
     StatsTooLow,
+    #[msg("Character creation is not fair")]
+    CharacterCreationNotFair,
 }
