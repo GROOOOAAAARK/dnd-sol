@@ -37,19 +37,11 @@ pub struct Initialize<'info> {
     pub system_program: Program<'info, System>,
 }
 
-#[derive(Accounts)]
-pub struct CharacterScope<'info> {
-    #[account(
-        init,
-        payer = player,
-        space = 8 + Character::SPACE
-    )]
-    pub character: Account<'info, Character>,
-
-    #[account(mut)]
-    pub player: Signer<'info>,
-
-    pub system_program: Program<'info, System>,
+#[account]
+#[derive(Default)]
+pub struct CharacterAccount {
+    pub character: Character,
+    pub player: Pubkey,
 }
 
 #[account]
