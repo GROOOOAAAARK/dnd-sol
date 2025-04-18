@@ -10,6 +10,34 @@ pub mod dnd_sol {
         msg!("Welcome to the world of DnD Sol: {:?}", ctx.program_id);
         Ok(())
     }
+
+    pub fn create_character(
+        ctx: Context<CharacterScope>,
+        name: String,
+        character_class: String,
+        strength: u8,
+        dexterity: u8,
+        constitution: u8,
+        intelligence: u8,
+        wisdom: u8,
+        charisma: u8,
+    ) -> Result<()> {
+        let character = Character::create(
+            ctx,
+            name,
+            character_class,
+            strength,
+            dexterity,
+            constitution,
+            intelligence,
+            wisdom,
+            charisma
+        ).unwrap();
+        msg!("Character created: {:?}", character.name);
+        Ok(())
+    }
+
+    // pub fn get_character()
 }
 
 #[derive(Accounts)]
@@ -44,7 +72,6 @@ pub struct CharacterAccount {
 #[account]
 #[derive(Default)]
 pub struct Character {
-    pub player: Pubkey,
     pub name: String,
     pub character_class: String,
     pub level: u8,
@@ -74,8 +101,8 @@ impl Character {
                              2 +  // health
                              2;   // max_health
 
-    pub fn create_character(
-        ctx: Context<CreateCharacter>,
+    pub fn create(
+        ctx: Context<CharacterScope>,
         name: String,
         character_class: String,
         strength: u8,
@@ -83,44 +110,34 @@ impl Character {
         constitution: u8,
         intelligence: u8,
         wisdom: u8,
-        charisma: u8,
-    ) -> Result<()> {
-        let character = &mut ctx.accounts.character;
-        let player = &ctx.accounts.player;
+        charisma: u8
+    ) -> Result<Character> {
+        let character: &mut Character = &mut Default::default();
 
-        Self::is_character_creation_fair(strength, dexterity, constitution, intelligence, wisdom)?;
+        if strength + dexterity + constitution + intelligence + wisdom + charisma > 10 {
+            return Err(ErrorCode::StatsTooHigh.into());
+        }
 
-        character.player = player.key();
+        if strength + dexterity + constitution + intelligence + wisdom + charisma < 10 {
+            return Err(ErrorCode::StatsTooLow.into());
+        }
+
         character.name = name;
         character.character_class = character_class;
+        character.level = 1;
+        character.experience = 0;
         character.strength = strength;
         character.dexterity = dexterity;
         character.constitution = constitution;
         character.intelligence = intelligence;
         character.wisdom = wisdom;
         character.charisma = charisma;
-
-        // Initialize with level 1
-        character.level = 1;
-        character.experience = 0;
         character.health = 10 + constitution as u16;
         character.max_health = character.health;
 
-        Ok(())
-    }
-
-    pub fn is_character_creation_fair(
-        strength: u8,
-        dexterity: u8,
-        constitution: u8,
-        intelligence: u8,
-        wisdom: u8,
-    ) -> Result<()> {
-        if strength + dexterity + constitution + intelligence + wisdom < 10 {
-            return Err(ErrorCode::StatsTooHigh.into());
-        }
-
-        Ok(())
+        ctx.accounts.character.character = character.clone();
+        ctx.accounts.character.player = ctx.accounts.player.key();
+        Ok(character.clone())
     }
 }
 
@@ -128,4 +145,6 @@ impl Character {
 pub enum ErrorCode {
     #[msg("Character stats are too high")]
     StatsTooHigh,
+    #[msg("Character stats are too low")]
+    StatsTooLow,
 }
