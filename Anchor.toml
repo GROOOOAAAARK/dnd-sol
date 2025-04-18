@@ -1,4 +1,5 @@
 [toolchain]
+anchor-lang = "0.31.0"
 
 [features]
 resolution = true
