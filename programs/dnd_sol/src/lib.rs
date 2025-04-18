@@ -14,11 +14,6 @@ pub mod dnd_sol {
 
 #[derive(Accounts)]
 pub struct Initialize<'info> {
-pub struct Initialize<'info> {
-    #[account(init, payer=owner, space = 8+Character::SPACE, seeds = [b"dnd_sol"], bump)]
-    pub character: Account<'info, Character>,
-
-pub struct Initialize<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
 
