@@ -28,10 +28,12 @@ pub struct Initialize<'info> {
     pub system_program: Program<'info, System>,
 }
 
+#[derive(Accounts)]
+pub struct CharacterScope<'info> {
     #[account(mut)]
-    pub payer: Signer<'info>,
+    pub player: Signer<'info>,
 
-    #[account(init, payer=payer, space = 8+Character::SPACE, seeds = [b"dnd_sol"], bump)]
+    #[account(init, payer=player, space = 8+Character::SPACE)]
     pub character: Account<'info, CharacterAccount>,
 
     pub system_program: Program<'info, System>,
