@@ -1,6 +1,7 @@
 {
   "name": "dnd-sol",
   "license": "ISC",
+  "packageManager": "bun@1.2.3",
   "scripts": {
     "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
     "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check"
