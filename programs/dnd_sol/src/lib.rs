@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use anchor_lang::{AnchorDeserialize, AnchorSerialize};
 
 declare_id!("FsE3oPaYDdRvso1C9zLub9AEfbzN9kkHRBbnMxtUK4f4");
 
@@ -15,6 +16,7 @@ pub mod dnd_sol {
         ctx: Context<CharacterScope>,
         name: String,
         character_class: String,
+        character_race: String,
         strength: u8,
         dexterity: u8,
         constitution: u8,
@@ -25,15 +27,16 @@ pub mod dnd_sol {
         let character = Character::create(
             ctx,
             name,
-            character_class,
+            character_class.into(),
+            character_race.into(),
             strength,
             dexterity,
             constitution,
             intelligence,
             wisdom,
-            charisma
+            charisma,
         ).unwrap();
-        msg!("Character created: {:?}", character.name);
+        msg!("Character created: {:?}", character.attributes.name);
         Ok(())
     }
 
@@ -72,10 +75,73 @@ pub struct CharacterAccount {
 #[account]
 #[derive(Default)]
 pub struct Character {
+    pub attributes: CharacterAttributes,
+    pub stats: CharacterStats,
+}
+
+#[account]
+#[derive(Default)]
+pub struct CharacterAttributes {
     pub name: String,
-    pub character_class: String,
+    pub class: CharacterClass,
     pub level: u8,
     pub experience: u32,
+    pub race: CharacterRace,
+}
+
+#[derive(Clone, Default, AnchorSerialize, AnchorDeserialize)]
+pub enum CharacterRace {
+    #[default]
+    Human,
+    Elf,
+    Dwarf,
+    Halfling,
+    Orc,
+    Troll,
+}
+
+impl From<String> for CharacterRace {
+    fn from(s: String) -> Self {
+        match s.to_lowercase().as_str() {
+            "human" => CharacterRace::Human,
+            "elf" => CharacterRace::Elf,
+            "dwarf" => CharacterRace::Dwarf,
+            "halfling" => CharacterRace::Halfling,
+            "orc" => CharacterRace::Orc,
+            "troll" => CharacterRace::Troll,
+            _ => CharacterRace::default(),
+        }
+    }
+}
+
+#[derive(Clone, Default, AnchorSerialize, AnchorDeserialize)]
+pub enum CharacterClass {
+    #[default]
+    Warrior,
+    Mage,
+    Thief,
+    Barbarian,
+    Monk,
+    Wizard,
+}
+
+impl From<String> for CharacterClass {
+    fn from(s: String) -> Self {
+        match s.to_lowercase().as_str() {
+            "warrior" => CharacterClass::Warrior,
+            "mage" => CharacterClass::Mage,
+            "thief" => CharacterClass::Thief,
+            "barbarian" => CharacterClass::Barbarian,
+            "monk" => CharacterClass::Monk,
+            "wizard" => CharacterClass::Wizard,
+            _ => CharacterClass::default(),
+        }
+    }
+}
+
+#[account]
+#[derive(Default)]
+pub struct CharacterStats {
     pub strength: u8,
     pub dexterity: u8,
     pub constitution: u8,
@@ -85,6 +151,7 @@ pub struct Character {
     pub health: u16,
     pub max_health: u16,
 }
+
 
 impl Character {
     pub const SPACE: usize = 32 + // pubkey
@@ -104,13 +171,14 @@ impl Character {
     pub fn create(
         ctx: Context<CharacterScope>,
         name: String,
-        character_class: String,
+        character_class: CharacterClass,
+        character_race: CharacterRace,
         strength: u8,
         dexterity: u8,
         constitution: u8,
         intelligence: u8,
         wisdom: u8,
-        charisma: u8
+        charisma: u8,
     ) -> Result<Character> {
         let character: &mut Character = &mut Default::default();
 
@@ -122,18 +190,27 @@ impl Character {
             return Err(ErrorCode::StatsTooLow.into());
         }
 
-        character.name = name;
-        character.character_class = character_class;
-        character.level = 1;
-        character.experience = 0;
-        character.strength = strength;
-        character.dexterity = dexterity;
-        character.constitution = constitution;
-        character.intelligence = intelligence;
-        character.wisdom = wisdom;
-        character.charisma = charisma;
-        character.health = 10 + constitution as u16;
-        character.max_health = character.health;
+        let attributes = CharacterAttributes {
+            name,
+            class: character_class,
+            level: 1,
+            experience: 0,
+            race: character_race,
+        };
+
+        let stats = CharacterStats {
+            strength,
+            dexterity,
+            constitution,
+            intelligence,
+            wisdom,
+            charisma,
+            health: 10 + constitution as u16,
+            max_health: 10 + constitution as u16,
+        };
+
+        character.attributes = attributes;
+        character.stats = stats;
 
         if !character._is_character_creation_fair()? {
             return Err(ErrorCode::CharacterCreationNotFair.into());
@@ -145,7 +222,7 @@ impl Character {
     }
 
     fn _is_character_creation_fair(&self) -> Result<bool> {
-        let total_stats = self.strength + self.dexterity + self.constitution + self.intelligence + self.wisdom + self.charisma;
+        let total_stats = self.stats.strength + self.stats.dexterity + self.stats.constitution + self.stats.intelligence + self.stats.wisdom + self.stats.charisma;
         if total_stats > 10 {
             return Err(ErrorCode::StatsTooHigh.into());
         }
