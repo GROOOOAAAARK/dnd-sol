@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 import { usePathname } from "next/navigation"
+import { useWallet } from "@solana/wallet-adapter-react"
+import { WalletMultiButton } from "@solana/wallet-adapter-react-ui"
 
 export default function Header() {
   const pathname = usePathname()
@@ -35,7 +37,9 @@ export default function Header() {
               <DropdownMenuItem asChild>
                 <Link href="/account">My Characters</Link>
               </DropdownMenuItem>
-              <DropdownMenuItem>Connect Wallet</DropdownMenuItem>
+              <DropdownMenuItem>
+                <WalletMultiButton />
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
