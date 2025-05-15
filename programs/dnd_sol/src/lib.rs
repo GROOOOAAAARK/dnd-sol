@@ -51,7 +51,8 @@ pub mod dnd_sol {
             AccountMeta::new(ctx.accounts.system_program.key(), false),
         ];
 
-        let instruction_discriminator: [u8; 8]= [189, 252, 51, 16, 255, 207, 98, 122];
+        //INFO: dice_rolling.commit_roll function discriminator
+        let instruction_discriminator: [u8; 8]= [225, 122, 182, 84, 21, 244, 202, 153];
 
         let mut instruction_data = Vec::with_capacity(2 + 8 + 8 + 8 + 32);
         instruction_data.extend_from_slice(&instruction_discriminator);
