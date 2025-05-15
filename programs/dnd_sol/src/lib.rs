@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
-use anchor_lang::{AnchorDeserialize, AnchorSerialize};
+use anchor_lang::{AnchorDeserialize, AnchorSerialize, ToAccountInfo};
+use anchor_lang::solana_program::{program::invoke, instruction::Instruction};
 
 declare_id!("FsE3oPaYDdRvso1C9zLub9AEfbzN9kkHRBbnMxtUK4f4");
 
@@ -76,41 +77,6 @@ pub mod dnd_sol {
 
         Ok(dice_rolled)
     }
-
-    pub fn reveal_action_result(ctx: Context<CharacterScope>) -> Result<()> {
-        let dice_rolling_program = dice_rolling::id();
-        let account_meta = vec![
-            AccountMeta::new(dice_rolling_program, false),
-            AccountMeta::new(ctx.accounts.player.key(), false),
-            AccountMeta::new(ctx.accounts.player.key(), false),
-            AccountMeta::new(ctx.accounts.system_program.key(), false),
-        ];
-
-        //INFO: dice_rolling.settle_roll function discriminator
-        let instruction_discriminator: [u8; 8]= [71, 48, 214, 3, 61, 20, 126, 255];
-
-        let mut instruction_data: Vec<u8> = Vec::with_capacity(2 + 8);
-        instruction_data.extend_from_slice(&instruction_discriminator);
-
-        let instruction = Instruction {
-            program_id: dice_rolling_program,
-            accounts: account_meta,
-            data: instruction_data,
-        };
-
-        let rolling_result = invoke(
-            &instruction,
-            &[
-                ctx.accounts.character.to_account_info(),
-                ctx.accounts.player.to_account_info(),
-                ctx.accounts.system_program.to_account_info()
-            ]
-        )?;
-
-
-        Ok(rolling_result)
-    }
-
 
     pub fn reveal_action_result(ctx: Context<CharacterScope>) -> Result<()> {
         let dice_rolling_program = dice_rolling::id();
