@@ -40,6 +40,42 @@ pub mod dnd_sol {
         Ok(())
     }
 
+    pub fn do_action(ctx: Context<CharacterScope>, dice_size: u8, success_floor: u8, bonus: u8) -> Result<()> {
+
+        let dice_rolling_program = dice_rolling::id();
+        let account_meta = vec![
+            AccountMeta::new(dice_rolling_program, false),
+            AccountMeta::new(ctx.accounts.player.key(), false),
+            AccountMeta::new(ctx.accounts.player.key(), false),
+            AccountMeta::new(ctx.accounts.system_program.key(), false),
+        ];
+
+        let instruction_discriminator: [u8; 8]= [189, 252, 51, 16, 255, 207, 98, 122];
+
+        let mut instruction_data = Vec::with_capacity(2 + 8 + 8 + 8 + 32);
+        instruction_data.extend_from_slice(&instruction_discriminator);
+        instruction_data.extend_from_slice(&dice_size.to_le_bytes());
+        instruction_data.extend_from_slice(&success_floor.to_le_bytes());
+        instruction_data.extend_from_slice(&bonus.to_le_bytes());
+        instruction_data.extend_from_slice(&ctx.accounts.player.key().to_bytes());
+
+        let instruction = Instruction {
+            program_id: dice_rolling_program,
+            accounts: account_meta,
+            data: instruction_data,
+        };
+
+        let dice_rolled = invoke(
+            &instruction,
+            &[
+                ctx.accounts.character.to_account_info(),
+                ctx.accounts.player.to_account_info(),
+                ctx.accounts.system_program.to_account_info()
+            ]
+        )?;
+
+        Ok(dice_rolled)
+    }
     // pub fn get_character()
 }
 
