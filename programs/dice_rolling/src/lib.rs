@@ -95,7 +95,7 @@ impl DiceRollingState {
         let dice_result = DiceResult {
             raw_result: modulated_random_value,
             bonus: dice_rolling.bonus,
-            success: success,
+            success,
             critical_success,
             critical_failure,
         };
@@ -141,15 +141,16 @@ pub struct SettleRoll<'info> {
 }
 
 #[account]
+#[derive(Default)]
 pub struct DiceRollingState {
-    allowed_user: Pubkey,
-    latest_roll_result: u8,
-    randomness_account: Pubkey,
-    dice_size: u8,
-    success_floor: u8,
-    bonus: u8,
-    bump: u8,
-    commit_slot: u64, // The slot at which the randomness was committed
+    pub allowed_user: Pubkey,
+    pub latest_roll_result: u8,
+    pub randomness_account: Pubkey,
+    pub dice_size: u8,
+    pub success_floor: u8,
+    pub bonus: u8,
+    pub bump: u8,
+    pub commit_slot: u64, // The slot at which the randomness was committed
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
@@ -160,7 +161,6 @@ pub struct DiceResult {
     critical_success: bool,
     critical_failure: bool,
 }
-
 
 #[error_code]
 pub enum ErrorCode {
