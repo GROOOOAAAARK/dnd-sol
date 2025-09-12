@@ -11,7 +11,7 @@ pub mod dice_rolling {
         msg!("Let's roll the dice ({:?})", ctx.program_id);
         let dice_rolling = &mut ctx.accounts.dice_rolling;
         dice_rolling.latest_roll_result = 0;
-        dice_rolling.randomness_account = Pubkey::default(); // Placeholder, will be set in coin_flip
+        dice_rolling.randomness_account = Pubkey::default(); // Placeholder, will be set in commit_roll
         dice_rolling.success_floor = 20;
         dice_rolling.bonus = 0;
         dice_rolling.bump = ctx.bumps.dice_rolling;
