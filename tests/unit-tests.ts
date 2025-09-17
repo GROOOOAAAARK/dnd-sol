@@ -172,17 +172,17 @@ describe('dnd-sol', () => {
 
     // Verify the character data
     expect(characterAccount.player.toString()).to.equal(player.publicKey.toString());
-    expect(characterAccount.character.name).to.equal(name);
-    expect(characterAccount.character.characterClass).to.equal(characterClass);
-    expect(characterAccount.character.strength).to.equal(strength);
-    expect(characterAccount.character.dexterity).to.equal(dexterity);
-    expect(characterAccount.character.constitution).to.equal(constitution);
-    expect(characterAccount.character.intelligence).to.equal(intelligence);
-    expect(characterAccount.character.wisdom).to.equal(wisdom);
-    expect(characterAccount.character.charisma).to.equal(charisma);
-    expect(characterAccount.character.level).to.equal(1);
-    expect(characterAccount.character.experience).to.equal(0);
-    expect(characterAccount.character.health).to.equal(10 + constitution);
-    expect(characterAccount.character.maxHealth).to.equal(10 + constitution);
+    expect(characterAccount.character.attributes.name).to.equal(name);
+    expect(characterAccount.character.attributes.class).to.equal(characterClass);
+    expect(characterAccount.character.stats.strength).to.equal(strength);
+    expect(characterAccount.character.stats.dexterity).to.equal(dexterity);
+    expect(characterAccount.character.stats.constitution).to.equal(constitution);
+    expect(characterAccount.character.stats.intelligence).to.equal(intelligence);
+    expect(characterAccount.character.stats.wisdom).to.equal(wisdom);
+    expect(characterAccount.character.stats.charisma).to.equal(charisma);
+    expect(characterAccount.character.attributes.level).to.equal(1);
+    expect(characterAccount.character.attributes.experience).to.equal(0);
+    expect(characterAccount.character.stats.health).to.equal(10 + constitution);
+    expect(characterAccount.character.stats.maxHealth).to.equal(10 + constitution);
   });
 });
