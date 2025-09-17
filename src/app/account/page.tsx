@@ -12,6 +12,7 @@ export default function AccountPage() {
   const [characters, setCharacters] = useState<Character[]>([])
   const [loading, setLoading] = useState(true)
   const characterService = useCharacterService()
+  const [selectedCharacter, setSelectedCharacter] = useState<Character>()
 
   useEffect(() => {
     const fetchCharacters = async () => {
@@ -27,6 +28,10 @@ export default function AccountPage() {
 
     fetchCharacters()
   }, [characterService])
+
+  const handleSelectCharacter = (character: Character) => {
+    setSelectedCharacter(character);
+  }
 
   if (loading) {
     return (
@@ -94,7 +99,7 @@ export default function AccountPage() {
                 </div>
               </CardContent>
               <CardFooter className="bg-accent/20 border-t border-accent">
-                <Button variant="secondary" className="w-full">
+                <Button variant="secondary" className="w-full" onClick={() => handleSelectCharacter(character)}>
                   Select Character
                 </Button>
               </CardFooter>
