@@ -49,7 +49,7 @@ export default function AccountPage() {
         <div className="rounded-lg border border-accent bg-card p-12 text-center">
           <h2 className="text-xl font-semibold mb-2">No Characters Found</h2>
           <p className="text-muted-foreground mb-6">
-            You haven't created any characters yet. Start your adventure by creating one.
+            You haven&apos;t created any characters yet. Start your adventure by creating one.
           </p>
           <Button asChild>
             <Link href="/create-character">Create Character</Link>

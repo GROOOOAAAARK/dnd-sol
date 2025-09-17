@@ -52,7 +52,7 @@ export default function AdventuresPage() {
           <div className="rounded-lg border border-accent bg-card p-8 text-center">
             <h3 className="text-xl font-semibold mb-2">No Ongoing Adventures</h3>
             <p className="text-muted-foreground">
-              You haven't started any adventures yet. Choose one from the available adventures below.
+              You haven&apos;t started any adventures yet. Choose one from the available adventures below.
             </p>
           </div>
         ) : (

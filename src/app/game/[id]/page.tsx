@@ -65,7 +65,7 @@ export default function GamePage() {
     return (
       <div className="container py-12 text-center">
         <h1 className="text-3xl font-bold mb-4">Adventure Not Found</h1>
-        <p className="mb-8">This adventure doesn't exist or has been completed.</p>
+        <p className="mb-8">This adventure doesn&apos;t exist or has been completed.</p>
         <Button onClick={() => router.push("/adventures")}>Back to Adventures</Button>
       </div>
     )
