@@ -39,6 +39,7 @@ describe('dnd-sol', () => {
     // Character data
     const name = "Cheated Character";
     const characterClass = "Wizard";
+    const characterRace = "Elf";
     const strength = 8;
     const dexterity = 12;
     const constitution = 14;
@@ -53,6 +54,7 @@ describe('dnd-sol', () => {
           .createCharacter(
               name,
               characterClass,
+              characterRace,
               strength,
               dexterity,
               constitution,
@@ -89,6 +91,7 @@ describe('dnd-sol', () => {
     // Character data with low stats (sum < 10)
     const name = "Weak Character";
     const characterClass = "Weak wacko";
+    const characterRace = "Orc";
     const strength = 1;
     const dexterity = 2;
     const constitution = 1;
@@ -101,6 +104,7 @@ describe('dnd-sol', () => {
       await program.methods.createCharacter(
         name,
         characterClass,
+        characterRace,
         strength,
         dexterity,
         constitution,
@@ -136,6 +140,7 @@ describe('dnd-sol', () => {
     // Character data
     const name = "Peaceful Character";
     const characterClass = "Wizard";
+    const characterRace = "Elf";
     const strength = 3;
     const dexterity = 2;
     const constitution = 1;
@@ -147,6 +152,7 @@ describe('dnd-sol', () => {
     await program.methods.createCharacter(
       name,
       characterClass,
+      characterRace,
       strength,
       dexterity,
       constitution,
