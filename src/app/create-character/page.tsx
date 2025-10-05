@@ -34,6 +34,7 @@ import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { useConnection, useAnchorWallet } from "@solana/wallet-adapter-react";
 import { PublicKey, Keypair, SystemProgram } from "@solana/web3.js";
 import dndSolIdl from "@/idl/dnd_sol.json";
+import { characterClasses, characterRaces } from "@/constants/character";
 
 const characterClasses = ["Warrior", "Mage", "Thief", "Barbarian", "Monk", "Wizard"]
 
