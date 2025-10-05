@@ -69,30 +69,17 @@ const formSchema = z
     }
   );
 
-const characterRaces = ["Human", "Elf", "Dwarf", "Halfling", "Orc", "Troll"]
-
-const formSchema = z.object({
-  name: z.string().min(2, {
-    message: "Name must be at least 2 characters.",
-  }),
-  character_class: z.string({
-    required_error: "Please select a class.",
-  }),
-  race: z.string({
-    required_error: "Please select a race.",
-  }),
-  strength: z.coerce.number().min(0).max(10),
-  dexterity: z.coerce.number().min(0).max(10),
-  constitution: z.coerce.number().min(0).max(10),
-  intelligence: z.coerce.number().min(0).max(10),
-  wisdom: z.coerce.number().min(0).max(10),
-  charisma: z.coerce.number().min(0).max(10),
-})
-
 export default function CreateCharacterPage() {
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const router = useRouter()
-  const characterService = useCharacterService()
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const router = useRouter();
+
+  const { connection } = useConnection();
+
+  const wallet = useAnchorWallet();
+
+  const programId = new PublicKey(
+    "4pCS5wMzpCpmVALCtiH2HMFSQ5AASYXA4VSXpXVXBvn1"
+  );
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -107,41 +94,70 @@ export default function CreateCharacterPage() {
       wisdom: 0,
       charisma: 0,
     },
-  })
+  });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    setIsSubmitting(true)
+    setIsSubmitting(true);
     try {
-      await characterService.createCharacter({
-        id: crypto.randomUUID(),
-        name: values.name,
-        character_class: values.character_class,
-        race: values.race,
-        stats: {
-          strength: values.strength,
-          dexterity: values.dexterity,
-          constitution: values.constitution,
-          intelligence: values.intelligence,
-          wisdom: values.wisdom,
-          charisma: values.charisma,
-        },
-      })
-      router.push("/account")
+      if (!wallet) {
+        throw new Error("Wallet not connected");
+      }
+
+      const provider = new AnchorProvider(
+        connection,
+        wallet,
+        AnchorProvider.defaultOptions()
+      );
+      if (!dndSolIdl) {
+        throw new Error(
+          "IDL not found on-chain for program " + programId.toBase58()
+        );
+      }
+      const program = new Program(dndSolIdl, provider);
+
+      const characterKp = Keypair.generate();
+
+      await program.methods
+        .createCharacter(
+          values.name,
+          values.character_class,
+          values.race,
+          values.strength,
+          values.dexterity,
+          values.constitution,
+          values.intelligence,
+          values.wisdom,
+          values.charisma
+        )
+        .accounts({
+          player: wallet.publicKey,
+          character: characterKp.publicKey,
+          systemProgram: SystemProgram.programId,
+        })
+        .signers([characterKp])
+        .rpc();
+
+      router.push("/account");
     } catch (error) {
-      console.error("Failed to create character:", error)
+      console.error("Failed to create character:", error);
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
   }
 
   return (
     <div className="container py-12">
-      <h1 className="text-3xl font-bold tracking-tight mb-8">Create Your Character</h1>
+      <h1 className="text-3xl font-bold tracking-tight mb-8">
+        Create Your Character
+      </h1>
 
       <Card className="max-w-2xl mx-auto">
         <CardHeader>
           <CardTitle>Character Details</CardTitle>
-          <CardDescription>Create a new character to begin your adventure in the world of DnD Sol.</CardDescription>
+          <CardDescription>
+            Create a new character to begin your adventure in the world of DnD
+            Sol.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -167,7 +183,10 @@ export default function CreateCharacterPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Race</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select race" />
@@ -192,7 +211,10 @@ export default function CreateCharacterPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Class</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select class" />
@@ -301,7 +323,11 @@ export default function CreateCharacterPage() {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full" disabled={isSubmitting}>
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={isSubmitting || !wallet}
+              >
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -316,5 +342,5 @@ export default function CreateCharacterPage() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
