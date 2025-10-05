@@ -36,7 +36,38 @@ import { PublicKey, Keypair, SystemProgram } from "@solana/web3.js";
 import dndSolIdl from "@/idl/dnd_sol.json";
 import { characterClasses, characterRaces } from "@/constants/character";
 
-const characterClasses = ["Warrior", "Mage", "Thief", "Barbarian", "Monk", "Wizard"]
+const formSchema = z
+  .object({
+    name: z.string().min(2, {
+      message: "Name must be at least 2 characters.",
+    }),
+    character_class: z.string({
+      required_error: "Please select a class.",
+    }),
+    race: z.string({
+      required_error: "Please select a race.",
+    }),
+    strength: z.coerce.number().min(0).max(10),
+    dexterity: z.coerce.number().min(0).max(10),
+    constitution: z.coerce.number().min(0).max(10),
+    intelligence: z.coerce.number().min(0).max(10),
+    wisdom: z.coerce.number().min(0).max(10),
+    charisma: z.coerce.number().min(0).max(10),
+  })
+  .refine(
+    (data) =>
+      data.strength +
+        data.dexterity +
+        data.constitution +
+        data.intelligence +
+        data.wisdom +
+        data.charisma ===
+      10,
+    {
+      message: "Total of all stats must equal 10",
+      path: ["charisma"],
+    }
+  );
 
 const characterRaces = ["Human", "Elf", "Dwarf", "Halfling", "Orc", "Troll"]
 
