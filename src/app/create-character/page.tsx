@@ -222,7 +222,7 @@ export default function CreateCharacterPage() {
                       <FormItem>
                         <FormLabel>Strength</FormLabel>
                         <FormControl>
-                          <Input type="number" min="1" max="20" {...field} />
+                          <Input type="number" min="0" max="20" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -236,7 +236,7 @@ export default function CreateCharacterPage() {
                       <FormItem>
                         <FormLabel>Dexterity</FormLabel>
                         <FormControl>
-                          <Input type="number" min="1" max="20" {...field} />
+                          <Input type="number" min="0" max="20" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -250,7 +250,7 @@ export default function CreateCharacterPage() {
                       <FormItem>
                         <FormLabel>Constitution</FormLabel>
                         <FormControl>
-                          <Input type="number" min="1" max="20" {...field} />
+                          <Input type="number" min="0" max="20" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -264,7 +264,7 @@ export default function CreateCharacterPage() {
                       <FormItem>
                         <FormLabel>Intelligence</FormLabel>
                         <FormControl>
-                          <Input type="number" min="1" max="20" {...field} />
+                          <Input type="number" min="0" max="20" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -278,7 +278,7 @@ export default function CreateCharacterPage() {
                       <FormItem>
                         <FormLabel>Wisdom</FormLabel>
                         <FormControl>
-                          <Input type="number" min="1" max="20" {...field} />
+                          <Input type="number" min="0" max="20" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -292,7 +292,7 @@ export default function CreateCharacterPage() {
                       <FormItem>
                         <FormLabel>Charisma</FormLabel>
                         <FormControl>
-                          <Input type="number" min="1" max="20" {...field} />
+                          <Input type="number" min="0" max="20" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
