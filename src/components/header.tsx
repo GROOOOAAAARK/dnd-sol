@@ -37,9 +37,13 @@ export default function Header() {
               <DropdownMenuItem asChild>
                 <Link href="/account">My Characters</Link>
               </DropdownMenuItem>
-              <DropdownMenuItem>
-                <WalletMultiButton />
-              </DropdownMenuItem>
+              {publicKey ? (
+                <span>{publicKey.toString()}</span>
+              ) : (
+                <DropdownMenuItem>
+                  <WalletMultiButton />
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
