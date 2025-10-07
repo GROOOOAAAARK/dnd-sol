@@ -38,6 +38,7 @@ export interface GameAction {
   id: string;
   title: string;
   description: string;
+  next_step_id?: string;
   requirements?: {
     stats?: Partial<CharacterStats>;
     items?: string[];
