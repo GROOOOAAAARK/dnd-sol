@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use switchboard_on_demand::RandomnessAccountData;
 
-declare_id!("FJopxxVnCAyw3seCqJP4yhR9DnU32L5JHTGqHpqZJtT4");
+declare_id!("8hnfFWuaYoWLMRnbZQooAktufsePATnNDruWMmH9MrBu");
 
 #[program]
 pub mod dice_rolling {
@@ -20,8 +20,15 @@ pub mod dice_rolling {
         Ok(())
     }
 
-    pub fn commit_roll(ctx: Context<CommitRoll>, dice_size: u8, success_floor: u8, bonus: u8, randomness_account: Pubkey) -> Result<bool> {
-        let rolling_committed = DiceRollingState::roll(ctx, dice_size, success_floor, bonus, randomness_account)?;
+    pub fn commit_roll(
+        ctx: Context<CommitRoll>,
+        dice_size: u8,
+        success_floor: u8,
+        bonus: u8,
+        randomness_account: Pubkey,
+    ) -> Result<bool> {
+        let rolling_committed =
+            DiceRollingState::roll(ctx, dice_size, success_floor, bonus, randomness_account)?;
         Ok(rolling_committed)
     }
 
@@ -40,7 +47,13 @@ impl DiceRollingState {
     8 + // bonus
     1; // bump
 
-    fn roll(ctx: Context<CommitRoll>, dice_size: u8, success_floor: u8, bonus: u8, randomness_account: Pubkey) -> Result<bool> {
+    fn roll(
+        ctx: Context<CommitRoll>,
+        dice_size: u8,
+        success_floor: u8,
+        bonus: u8,
+        randomness_account: Pubkey,
+    ) -> Result<bool> {
         let dice_rolling = &mut ctx.accounts.dice_rolling;
 
         if dice_size < 2 {
@@ -52,7 +65,9 @@ impl DiceRollingState {
         dice_rolling.bonus = bonus;
 
         let clock: Clock = Clock::get()?;
-        let randomness_data = RandomnessAccountData::parse(ctx.accounts.randomness_account_data.data.borrow()).unwrap();
+        let randomness_data =
+            RandomnessAccountData::parse(ctx.accounts.randomness_account_data.data.borrow())
+                .unwrap();
         if randomness_data.seed_slot != clock.slot - 1 {
             msg!("seed_slot: {}", randomness_data.seed_slot);
             msg!("slot: {}", clock.slot);
@@ -64,7 +79,6 @@ impl DiceRollingState {
     }
 
     fn settle(ctx: Context<SettleRoll>) -> Result<DiceResult> {
-
         let clock = Clock::get()?;
         let dice_rolling = &mut ctx.accounts.dice_rolling;
 
@@ -90,7 +104,8 @@ impl DiceRollingState {
         let critical_success = modulated_random_value == dice_rolling.dice_size;
         let critical_failure = modulated_random_value == 0;
 
-        let success = modulated_random_value + dice_rolling.bonus >= dice_rolling.success_floor && !critical_failure;
+        let success = modulated_random_value + dice_rolling.bonus >= dice_rolling.success_floor
+            && !critical_failure;
 
         let dice_result = DiceResult {
             raw_result: modulated_random_value,
