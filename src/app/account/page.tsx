@@ -107,6 +107,11 @@ export default function AccountPage() {
           ))}
         </div>
       )}
+      {selectedCharacter && (
+        <Button>
+          Start Adventure
+        </Button>
+      )}
     </div>
   )
 }
