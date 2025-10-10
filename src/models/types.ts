@@ -25,6 +25,7 @@ export interface Adventure {
   description: string;
   image?: string;
   level: number;
+  first_step_id: string;
 }
 
 export interface DiceRollParams {
