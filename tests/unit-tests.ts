@@ -69,7 +69,7 @@ describe('dnd-sol', () => {
           .signers([player, character])
           .rpc();
 
-    } catch (error) {
+    } catch (error: any) {
       // Verify the error is the one we expect
       expect(error.toString()).to.include("Character stats are too high");
     }
@@ -119,7 +119,7 @@ describe('dnd-sol', () => {
       .signers([player, character])
       .rpc();
 
-    } catch (error) {
+    } catch (error: any) {
       // Verify the error is the one we expect
       expect(error.toString()).to.include("Character stats are too low");
     }
