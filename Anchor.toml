@@ -5,8 +5,8 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-dice_rolling = "FJopxxVnCAyw3seCqJP4yhR9DnU32L5JHTGqHpqZJtT4"
-dnd_sol = "FsE3oPaYDdRvso1C9zLub9AEfbzN9kkHRBbnMxtUK4f4"
+dice_rolling = "8hnfFWuaYoWLMRnbZQooAktufsePATnNDruWMmH9MrBu"
+dnd_sol = "4pCS5wMzpCpmVALCtiH2HMFSQ5AASYXA4VSXpXVXBvn1"
 
 [registry]
 url = "https://api.apr.dev"
@@ -16,4 +16,6 @@ cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
-test = "bun run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+ts-test = "bunx ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+e2e-test = "cargo test-sbf --manifest-path ./programs/dnd_sol/Cargo.toml -- -- --nocapture"
+test = "cargo test-sbf --manifest-path ./programs/dnd_sol/Cargo.toml -- -- --nocapture"
