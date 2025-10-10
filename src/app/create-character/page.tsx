@@ -108,11 +108,6 @@ export default function CreateCharacterPage() {
         wallet,
         AnchorProvider.defaultOptions()
       );
-      if (!dndSolIdl) {
-        throw new Error(
-          "IDL not found on-chain for program " + programId.toBase58()
-        );
-      }
       const program = new Program(dndSolIdl, provider);
 
       const characterKp = Keypair.generate();
