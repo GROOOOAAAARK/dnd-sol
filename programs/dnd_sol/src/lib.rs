@@ -1,8 +1,8 @@
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::{instruction::Instruction, program::invoke};
 use anchor_lang::{AnchorDeserialize, AnchorSerialize, ToAccountInfo};
-use anchor_lang::solana_program::{program::invoke, instruction::Instruction};
 
-declare_id!("FsE3oPaYDdRvso1C9zLub9AEfbzN9kkHRBbnMxtUK4f4");
+declare_id!("4pCS5wMzpCpmVALCtiH2HMFSQ5AASYXA4VSXpXVXBvn1");
 
 #[program]
 pub mod dnd_sol {
@@ -36,13 +36,18 @@ pub mod dnd_sol {
             intelligence,
             wisdom,
             charisma,
-        ).unwrap();
+        )
+        .unwrap();
         msg!("Character created: {:?}", character.attributes.name);
         Ok(())
     }
 
-    pub fn do_action(ctx: Context<CharacterScope>, dice_size: u8, success_floor: u8, bonus: u8) -> Result<()> {
-
+    pub fn do_action(
+        ctx: Context<CharacterScope>,
+        dice_size: u8,
+        success_floor: u8,
+        bonus: u8,
+    ) -> Result<()> {
         let dice_rolling_program = dice_rolling::id();
         let account_meta = vec![
             AccountMeta::new(dice_rolling_program, false),
@@ -52,7 +57,7 @@ pub mod dnd_sol {
         ];
 
         //INFO: dice_rolling.commit_roll function discriminator
-        let instruction_discriminator: [u8; 8]= [225, 122, 182, 84, 21, 244, 202, 153];
+        let instruction_discriminator: [u8; 8] = [225, 122, 182, 84, 21, 244, 202, 153];
 
         let mut instruction_data = Vec::with_capacity(2 + 8 + 8 + 8 + 32);
         instruction_data.extend_from_slice(&instruction_discriminator);
@@ -72,8 +77,8 @@ pub mod dnd_sol {
             &[
                 ctx.accounts.character.to_account_info(),
                 ctx.accounts.player.to_account_info(),
-                ctx.accounts.system_program.to_account_info()
-            ]
+                ctx.accounts.system_program.to_account_info(),
+            ],
         )?;
 
         Ok(dice_rolled)
@@ -89,7 +94,7 @@ pub mod dnd_sol {
         ];
 
         //INFO: dice_rolling.settle_roll function discriminator
-        let instruction_discriminator: [u8; 8]= [71, 48, 214, 3, 61, 20, 126, 255];
+        let instruction_discriminator: [u8; 8] = [71, 48, 214, 3, 61, 20, 126, 255];
 
         let mut instruction_data: Vec<u8> = Vec::with_capacity(2 + 8);
         instruction_data.extend_from_slice(&instruction_discriminator);
@@ -105,10 +110,9 @@ pub mod dnd_sol {
             &[
                 ctx.accounts.character.to_account_info(),
                 ctx.accounts.player.to_account_info(),
-                ctx.accounts.system_program.to_account_info()
-            ]
+                ctx.accounts.system_program.to_account_info(),
+            ],
         )?;
-
 
         Ok(rolling_result)
     }
@@ -225,7 +229,6 @@ pub struct CharacterStats {
     pub max_health: u16,
 }
 
-
 impl Character {
     pub const SPACE: usize = 32 + // pubkey
                              50 + // name (variable, estimated)
@@ -239,7 +242,7 @@ impl Character {
                              1 +  // wisdom
                              1 +  // charisma
                              2 +  // health
-                             2;   // max_health
+                             2; // max_health
 
     pub fn create(
         ctx: Context<CharacterScope>,
@@ -295,7 +298,12 @@ impl Character {
     }
 
     fn _is_character_creation_fair(&self) -> Result<bool> {
-        let total_stats = self.stats.strength + self.stats.dexterity + self.stats.constitution + self.stats.intelligence + self.stats.wisdom + self.stats.charisma;
+        let total_stats = self.stats.strength
+            + self.stats.dexterity
+            + self.stats.constitution
+            + self.stats.intelligence
+            + self.stats.wisdom
+            + self.stats.charisma;
         if total_stats > 10 {
             return Err(ErrorCode::StatsTooHigh.into());
         }
