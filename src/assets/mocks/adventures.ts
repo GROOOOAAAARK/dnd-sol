@@ -9,6 +9,7 @@ export const mockAdventures: Adventure[] = [
       "Explore ancient ruins filled with traps and treasures. Legend says a powerful artifact lies within.",
     level: 1,
     image: "/placeholder.svg?height=200&width=400&text=Forgotten+Ruins",
+    first_step_id: "step1_adv1",
   },
   {
     id: "adv2",
@@ -33,6 +34,7 @@ export const mockAdventures: Adventure[] = [
       "A foreboding dungeon carved into the hillside. Dark rumors speak of treasures guarded by unspeakable horrors within its depths.",
     level: 1,
     image: "/placeholder.svg?height=200&width=400&text=Shadow+Keep",
+    first_step_id: "step1_adv4",
   },
 ];
 
@@ -40,7 +42,7 @@ export const mockOngoingAdventures: Adventure[] = [];
 
 // Mock data for game steps
 export const mockGameSteps: Record<string, AdventureStep> = {
-  adv1: {
+  step1_adv1: {
     id: "step1_adv1",
     adventureId: "adv1",
     title: "The Entrance",
@@ -53,12 +55,14 @@ export const mockGameSteps: Record<string, AdventureStep> = {
         title: "Enter cautiously",
         description:
           "Move slowly and carefully, keeping an eye out for traps or dangers.",
+        next_step_id: "stepEnteredCautiouslySuccess",
       },
       {
         id: "action2",
         title: "Search the entrance",
         description:
           "Look for clues, hidden mechanisms, or valuable items before proceeding.",
+        next_step_id: "stepSearchEntranceOngoing",
       },
       {
         id: "action3",
@@ -68,53 +72,27 @@ export const mockGameSteps: Record<string, AdventureStep> = {
       },
     ],
   },
-  adv2: {
-    id: "step1_adv2",
-    adventureId: "adv2",
-    title: "The Forest Edge",
+  stepEnteredCautiouslySuccess: {
+    id: "stepEnteredCautiouslySuccess",
+    adventureId: "adv1",
+    title: "The Patio",
     description:
-      "The trees loom before you, their branches twisted and gnarled. The usual forest sounds are absent, replaced by an eerie silence. A narrow path winds its way between the ancient trunks, disappearing into shadow.",
-    image: "/placeholder.svg?height=300&width=800&text=Forest+Edge",
-    actions: [
-      {
-        id: "action1",
-        title: "Follow the path",
-        description: "Stay on the trail and venture deeper into the forest.",
-      },
-      {
-        id: "action2",
-        title: "Climb a tree",
-        description: "Get a better view of the surrounding area from above.",
-      },
-      {
-        id: "action3",
-        title: "Set up camp",
-        description: "Rest and prepare before entering the forest.",
-      },
-    ],
+      "You successfully entered the dungeon, welcome !",
+    actions: [],
   },
-  adv3: {
-    id: "step1_adv3",
-    adventureId: "adv3",
-    title: "The Mountain Base",
+  stepSearchEntranceOngoing: {
+    id: "stepSearchEntranceOngoing",
+    adventureId: "adv1",
+    title: "The Entrance",
     description:
-      "The massive mountain rises before you, its peak lost in the clouds. The rocky terrain is steep and treacherous, with occasional plumes of smoke visible from the summit. A narrow trail zigzags up the mountainside.",
-    image: "/placeholder.svg?height=300&width=800&text=Mountain+Base",
+      "You managed to search the entrance, but you need to find another way to enter the dungeon.",
     actions: [
       {
         id: "action1",
-        title: "Begin the climb",
-        description: "Start ascending the mountain via the visible trail.",
-      },
-      {
-        id: "action2",
-        title: "Look for an alternative route",
-        description: "Search for a less obvious but potentially safer path.",
-      },
-      {
-        id: "action3",
-        title: "Talk to local guides",
-        description: "Seek advice from experienced mountaineers in the area.",
+        title: "Get back to the door",
+        description:
+          "Get back from where you come from, in front of the dungeon's entrance.",
+        next_step_id: "step1_adv1",
       },
     ],
   },
