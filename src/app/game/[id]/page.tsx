@@ -1,46 +1,86 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 import { useGameService } from "@/services/game.service";
-import type { AdventureStep, GameAction } from "@/models/types";
+import { useAdventureService } from "@/services/adventure.service";
+import type { AdventureStep, Character, GameAction } from "@/models/types";
+import { useCharacterStore } from "@/stores/selectedCharacter.store";
 
 export default function GamePage() {
   const params = useParams();
   const router = useRouter();
+  const adventureService = useAdventureService();
   const gameService = useGameService();
   const [currentStep, setCurrentStep] = useState<AdventureStep | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const character = useCharacterStore((state) => state.selectedCharacter);
 
   const adventureId = params.id as string;
+  const adventureServiceRef = useRef(adventureService);
+  const gameServiceRef = useRef(gameService);
 
   useEffect(() => {
-    const fetchGameStep = async () => {
+    adventureServiceRef.current = adventureService;
+  }, [adventureService]);
+
+  useEffect(() => {
+    if (!adventureId) {
+      return;
+    }
+
+    let isSubscribed = true;
+
+    const loadInitialStep = async () => {
+      setLoading(true);
       try {
-        const step = await gameService.getCurrentStep(adventureId);
+        const { getCurrentStep, getFirstStep } = adventureServiceRef.current;
+        let step = await getCurrentStep(adventureId);
+
+        if (!isSubscribed) {
+          return;
+        }
+
+        if (!step) {
+          step = await getFirstStep(adventureId);
+        }
+
         setCurrentStep(step);
       } catch (error) {
         console.error("Failed to fetch game step:", error);
       } finally {
-        setLoading(false);
+        if (isSubscribed) {
+          setLoading(false);
+        }
       }
     };
 
-    fetchGameStep();
-  }, [adventureId, gameService]);
+    loadInitialStep();
+
+    return () => {
+      isSubscribed = false;
+    };
+  }, [adventureId]);
 
   const handleAction = async (action: GameAction) => {
     setActionLoading(true);
     try {
-      const isValid = await gameService.verifyRequirements(action);
+      if (!character) {
+        console.error("Character is not set.");
+        return;
+      }
 
-      if (isValid) {
-        const nextStep = await gameService.getNextStep(adventureId, action.id);
+      const { verifyRequirements } = gameServiceRef.current;
+      const { getNextStep } = adventureServiceRef.current;
+      const isValid = await verifyRequirements(action, character!);
+
+      if (isValid && currentStep) {
+        const nextStep = await getNextStep(adventureId, action.next_step_id!);
         setCurrentStep(nextStep);
       } else {
         // Show some feedback that the action cannot be performed
@@ -61,10 +101,10 @@ export default function GamePage() {
     );
   }
 
-  if (!currentStep) {
+  if (!loading && !currentStep) {
     return (
       <div className="container py-12 text-center">
-        <h1 className="text-3xl font-bold mb-4">Adeventure step not found</h1>
+        <h1 className="text-3xl font-bold mb-4">Adventure step not found</h1>
         <p className="mb-8">
           This adventure step doesn&apos;t exist or has been completed.
         </p>
