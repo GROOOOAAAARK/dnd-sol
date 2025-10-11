@@ -11,7 +11,7 @@ export interface CharacterStats {
 }
 
 export interface Character {
-  id: string;
+  id: string; // Account PubKey
   name: string;
   character_class: string;
   race: string;
