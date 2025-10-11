@@ -33,8 +33,12 @@ import { Loader2 } from "lucide-react";
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { useConnection, useAnchorWallet } from "@solana/wallet-adapter-react";
 import { PublicKey, Keypair, SystemProgram } from "@solana/web3.js";
-import dndSolIdl from "@/idl/dnd_sol.json";
 import { characterClasses, characterRaces } from "@/constants/character";
+import { useCharacterStore } from "@/stores/selectedCharacter.store";
+import { useCharacterService } from "@/services/character.service";
+import dndSolIdl from "@/idl/dnd_sol.json";
+import { Character } from "@/models/types";
+import { CharacterStats } from '../../models/types';
 
 const formSchema = z
   .object({
@@ -72,7 +76,8 @@ const formSchema = z
 export default function CreateCharacterPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
-
+  const { setCharacter } = useCharacterStore();
+  const { createCharacter } = useCharacterService();
   const { connection } = useConnection();
 
   const wallet = useAnchorWallet();
@@ -131,6 +136,27 @@ export default function CreateCharacterPage() {
         })
         .signers([characterKp])
         .rpc();
+
+        const stats: CharacterStats = {
+          strength: values.strength,
+          dexterity: values.dexterity,
+          constitution: values.constitution,
+          intelligence: values.intelligence,
+          wisdom: values.wisdom,
+          charisma: values.charisma,
+        };
+
+        const character: Character = {
+          id: characterKp.publicKey.toString(),
+          name: values.name,
+          character_class: values.character_class,
+          race: values.race,
+          stats: stats,
+        };
+
+        setCharacter(character);
+
+        createCharacter(character);
 
       router.push("/account");
     } catch (error) {
