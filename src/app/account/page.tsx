@@ -7,18 +7,33 @@ import { Loader2 } from "lucide-react"
 import { useCharacterService } from "@/services/character.service"
 import type { Character } from "@/models/types"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { useCharacterStore } from "@/stores/selectedCharacter.store"
+import { useConnection, useAnchorWallet } from "@solana/wallet-adapter-react";
+import { PublicKey } from "@solana/web3.js"
 
 export default function AccountPage() {
   const [characters, setCharacters] = useState<Character[]>([])
   const [loading, setLoading] = useState(true)
   const characterService = useCharacterService()
-  const [selectedCharacter, setSelectedCharacter] = useState<Character>()
+  const router = useRouter()
+  const { connection } = useConnection();
+  const wallet = useAnchorWallet();
+  const { selectedCharacter, setCharacter } = useCharacterStore()
 
   useEffect(() => {
     const fetchCharacters = async () => {
       try {
-        const data = await characterService.getCharacters()
-        setCharacters(data)
+        const accountsResponse = await connection.getParsedProgramAccounts(
+          new PublicKey(process.env.NEXT_PUBLIC_DND_PROGRAM_ADDRESS!),
+          {
+          },
+        )
+
+        const parsedAccounts = accountsResponse.map((account) => Buffer.from(account.account.data as Buffer))
+
+        debugger;
+
       } catch (error) {
         console.error("Failed to fetch characters:", error)
       } finally {
@@ -27,10 +42,10 @@ export default function AccountPage() {
     }
 
     fetchCharacters()
-  }, [characterService])
+  }, [wallet, connection])
 
   const handleSelectCharacter = (character: Character) => {
-    setSelectedCharacter(character);
+    setCharacter(character)
   }
 
   if (loading) {
@@ -108,7 +123,7 @@ export default function AccountPage() {
         </div>
       )}
       {selectedCharacter && (
-        <Button>
+        <Button onClick={() => router.push(`/adventures`)}>
           Start Adventure
         </Button>
       )}
