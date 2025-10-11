@@ -17,5 +17,5 @@ wallet = "~/.config/solana/id.json"
 
 [scripts]
 ts-test = "bunx ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
-e2e-test = "cargo test-sbf --manifest-path ./programs/dnd_sol/Cargo.toml -- -- --nocapture"
+e2e-test = "cargo test-sbf --manifest-path ./Cargo.toml -- -- --nocapture"
 test = "cargo test-sbf --manifest-path ./programs/dnd_sol/Cargo.toml -- -- --nocapture"
