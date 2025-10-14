@@ -11,15 +11,16 @@ import { useRouter } from "next/navigation"
 import { useCharacterStore } from "@/stores/selectedCharacter.store"
 import { useConnection, useAnchorWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js"
+import { useCharactersStore } from "@/stores/characters.store"
 
 export default function AccountPage() {
-  const [characters, setCharacters] = useState<Character[]>([])
   const [loading, setLoading] = useState(true)
   const characterService = useCharacterService()
   const router = useRouter()
   const { connection } = useConnection();
   const wallet = useAnchorWallet();
   const { selectedCharacter, setCharacter } = useCharacterStore()
+  const { characters } = useCharactersStore()
 
   useEffect(() => {
     const fetchCharacters = async () => {
