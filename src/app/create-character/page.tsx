@@ -35,7 +35,7 @@ import { useConnection, useAnchorWallet } from "@solana/wallet-adapter-react";
 import { PublicKey, Keypair, SystemProgram } from "@solana/web3.js";
 import { characterClasses, characterRaces } from "@/constants/character";
 import { useCharacterStore } from "@/stores/selectedCharacter.store";
-import { useCharacterService } from "@/services/character.service";
+import { useCharactersStore } from "@/stores/characters.store";
 import dndSolIdl from "@/idl/dnd_sol.json";
 import { Character } from "@/models/types";
 import { CharacterStats } from '../../models/types';
@@ -77,7 +77,7 @@ export default function CreateCharacterPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
   const { setCharacter } = useCharacterStore();
-  const { createCharacter } = useCharacterService();
+  const { addCharacter } = useCharactersStore();
   const { connection } = useConnection();
 
   const wallet = useAnchorWallet();
@@ -156,7 +156,7 @@ export default function CreateCharacterPage() {
 
         setCharacter(character);
 
-        createCharacter(character);
+        addCharacter(character);
 
       router.push("/account");
     } catch (error) {
