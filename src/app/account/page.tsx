@@ -33,8 +33,6 @@ export default function AccountPage() {
 
         const parsedAccounts = accountsResponse.map((account) => Buffer.from(account.account.data as Buffer))
 
-        debugger;
-
       } catch (error) {
         console.error("Failed to fetch characters:", error)
       } finally {
