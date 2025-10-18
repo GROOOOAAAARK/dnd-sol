@@ -11,11 +11,13 @@ export interface CharacterStats {
 }
 
 export interface Character {
-  id: string; // Account PubKey
+  id?: string; // Account PubKey
   name: string;
   character_class: string;
   race: string;
   stats: CharacterStats;
+  level?: number;
+  experience?: number;
 }
 
 // Adventure types
