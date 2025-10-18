@@ -21,7 +21,7 @@ export default function GamePage() {
   const [actionLoading, setActionLoading] = useState(false);
   const character = useCharacterStore((state) => state.selectedCharacter);
 
-  const adventureId = params.id as string;
+  const adventureId = params.adventureId as string;
   const adventureServiceRef = useRef(adventureService);
   const gameServiceRef = useRef(gameService);
 
@@ -80,7 +80,7 @@ export default function GamePage() {
       const isValid = await verifyRequirements(action, character!);
 
       if (isValid && currentStep) {
-        const nextStep = await getNextStep(adventureId, action.next_step_id!);
+        const nextStep = await getNextStep(adventureId, action.success_next_step_id!);
         setCurrentStep(nextStep);
       } else {
         // Show some feedback that the action cannot be performed
