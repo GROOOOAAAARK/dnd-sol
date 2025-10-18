@@ -68,32 +68,43 @@ export function useSolanaService() {
           // The account data is in accountInfo.account.data (Buffer)
           const decoded = coder.decode("CharacterAccount", accountInfo.account.data)
 
-          // Parse the decoded data into your Character format
-          return {
-            id: accountInfo.pubkey.toString(),
-            name: decoded.character.attributes.name,
-            race: decoded.character.attributes.race,
-            character_class: decoded.character.attributes.class,
-            level: decoded.character.attributes.level,
-            experience: decoded.character.attributes.experience,
-            stats: {
-              strength: decoded.character.stats.strength,
-              dexterity: decoded.character.stats.dexterity,
-              constitution: decoded.character.stats.constitution,
-              intelligence: decoded.character.stats.intelligence,
-              wisdom: decoded.character.stats.wisdom,
-              charisma: decoded.character.stats.charisma,
-            },
-            player: decoded.player.toString(),
+          // Helper function to extract enum variant name
+          const getEnumVariant = (enumObj: any): string => {
+            if (typeof enumObj === 'string') return enumObj
+            if (typeof enumObj === 'object' && enumObj !== null) {
+              const keys = Object.keys(enumObj)
+              return keys[0] || ''
+            }
+            return String(enumObj)
           }
+
+          // Parse the decoded data into your Character format
+          const character: Character = {
+            id: accountInfo.pubkey.toString(),
+            name: String(decoded.character.attributes.name),
+            race: getEnumVariant(decoded.character.attributes.race),
+            character_class: getEnumVariant(decoded.character.attributes.class),
+            level: Number(decoded.character.attributes.level),
+            experience: Number(decoded.character.attributes.experience),
+            stats: {
+              strength: Number(decoded.character.stats.strength),
+              dexterity: Number(decoded.character.stats.dexterity),
+              constitution: Number(decoded.character.stats.constitution),
+              intelligence: Number(decoded.character.stats.intelligence),
+              wisdom: Number(decoded.character.stats.wisdom),
+              charisma: Number(decoded.character.stats.charisma),
+            },
+          }
+
+          return character
         } catch (decodeError) {
           console.error("Failed to decode account:", decodeError)
           return null
         }
-      }).filter((char): char is NonNullable<typeof char> => char !== null)
+      })
 
-      console.log("Decoded characters from blockchain:", decodedCharacters)
-      return decodedCharacters
+      const validCharacters = decodedCharacters.filter((character): character is Character => character !== null)
+      return validCharacters
     } catch (error) {
       console.error("Failed to fetch characters from blockchain:", error)
       return []
