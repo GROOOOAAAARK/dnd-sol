@@ -16,6 +16,35 @@ export function useSolanaService() {
     const provider = new AnchorProvider(connection, wallet, AnchorProvider.defaultOptions())
     return new Program(DndSolIDL, provider)
   }, [connection, wallet])
+
+  const createCharacter = async (character: Character): Promise<void> => {
+    if (!wallet || !program) {
+      throw new Error("Wallet not connected")
+    }
+    try {
+      const characterKp = new Keypair();
+
+      await program.methods.createCharacter(
+        character.name,
+        character.character_class,
+        character.race,
+        character.stats.strength,
+        character.stats.dexterity,
+        character.stats.constitution,
+        character.stats.intelligence,
+        character.stats.wisdom,
+        character.stats.charisma
+      ).accounts({
+        player: wallet.publicKey,
+        character: characterKp.publicKey,
+        systemProgram: SystemProgram.programId,
+      }).signers([characterKp]).rpc();
+    } catch (error) {
+      console.error("Failed to create character:", error)
+      throw error
+    }
+  }
+
   const getCharacters = async (): Promise<Character[]> => {
     if (!wallet || !program) {
       throw new Error("Wallet not connected")
