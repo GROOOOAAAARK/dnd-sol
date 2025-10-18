@@ -98,27 +98,27 @@ export default function CreateCharacterPage() {
     setIsSubmitting(true);
     try {
 
-        const stats: CharacterStats = {
-          strength: values.strength,
-          dexterity: values.dexterity,
-          constitution: values.constitution,
-          intelligence: values.intelligence,
-          wisdom: values.wisdom,
-          charisma: values.charisma,
-        };
+      const stats: CharacterStats = {
+        strength: values.strength,
+        dexterity: values.dexterity,
+        constitution: values.constitution,
+        intelligence: values.intelligence,
+        wisdom: values.wisdom,
+        charisma: values.charisma,
+      };
 
-        const character: Character = {
-          name: values.name,
-          character_class: values.character_class,
-          race: values.race,
-          stats: stats,
-        };
+      const character: Character = {
+        name: values.name,
+        character_class: values.character_class,
+        race: values.race,
+        stats: stats,
+      };
 
       await createCharacter(character);
 
-        setCharacter(character);
+      setCharacter(character);
 
-        addCharacter(character);
+      addCharacter(character);
 
       router.push("/account");
     } catch (error) {
