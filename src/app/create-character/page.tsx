@@ -78,13 +78,8 @@ export default function CreateCharacterPage() {
   const router = useRouter();
   const { setCharacter } = useCharacterStore();
   const { addCharacter } = useCharactersStore();
-  const { connection } = useConnection();
-
+  const { createCharacter } = useSolanaService();
   const wallet = useAnchorWallet();
-
-  const programId = new PublicKey(
-    "4pCS5wMzpCpmVALCtiH2HMFSQ5AASYXA4VSXpXVXBvn1"
-  );
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -104,38 +99,6 @@ export default function CreateCharacterPage() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
     try {
-      if (!wallet) {
-        throw new Error("Wallet not connected");
-      }
-
-      const provider = new AnchorProvider(
-        connection,
-        wallet,
-        AnchorProvider.defaultOptions()
-      );
-      const program = new Program(dndSolIdl, provider);
-
-      const characterKp = Keypair.generate();
-
-      await program.methods
-        .createCharacter(
-          values.name,
-          values.character_class,
-          values.race,
-          values.strength,
-          values.dexterity,
-          values.constitution,
-          values.intelligence,
-          values.wisdom,
-          values.charisma
-        )
-        .accounts({
-          player: wallet.publicKey,
-          character: characterKp.publicKey,
-          systemProgram: SystemProgram.programId,
-        })
-        .signers([characterKp])
-        .rpc();
 
         const stats: CharacterStats = {
           strength: values.strength,
@@ -147,12 +110,13 @@ export default function CreateCharacterPage() {
         };
 
         const character: Character = {
-          id: characterKp.publicKey.toString(),
           name: values.name,
           character_class: values.character_class,
           race: values.race,
           stats: stats,
         };
+
+      await createCharacter(character);
 
         setCharacter(character);
 
