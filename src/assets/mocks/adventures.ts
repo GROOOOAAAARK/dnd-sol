@@ -55,14 +55,14 @@ export const mockGameSteps: Record<string, AdventureStep> = {
         title: "Enter cautiously",
         description:
           "Move slowly and carefully, keeping an eye out for traps or dangers.",
-        next_step_id: "stepEnteredCautiouslySuccess",
+        success_next_step_id: "stepEnteredCautiouslySuccess",
       },
       {
         id: "action2",
         title: "Search the entrance",
         description:
           "Look for clues, hidden mechanisms, or valuable items before proceeding.",
-        next_step_id: "stepSearchEntranceOngoing",
+        success_next_step_id: "stepSearchEntranceOngoing",
       },
       {
         id: "action3",
@@ -112,7 +112,7 @@ export const mockGameSteps: Record<string, AdventureStep> = {
         title: "Ring the bell",
         description:
           "Pull the rope and ring the ancient bell to announce your presence.",
-        next_step_id: "step_adv4_bell_success",
+        success_next_step_id: "step_adv4_bell_success",
         requirements: {
           stats: { charisma: 12 },
         },
@@ -127,7 +127,7 @@ export const mockGameSteps: Record<string, AdventureStep> = {
         title: "Enter smoothly",
         description:
           "Attempt to slip through the doors quietly and undetected.",
-        next_step_id: "step_adv4_enter_success",
+        success_next_step_id: "step_adv4_enter_success",
         requirements: {
           stats: { dexterity: 14 },
         },
@@ -142,7 +142,7 @@ export const mockGameSteps: Record<string, AdventureStep> = {
         title: "Find another way around",
         description:
           "Search the perimeter for an alternative entrance or weakness in the walls.",
-        next_step_id: "step_adv4_around_success",
+        success_next_step_id: "step_adv4_around_success",
         requirements: {
           stats: { wisdom: 13, intelligence: 11 },
         },

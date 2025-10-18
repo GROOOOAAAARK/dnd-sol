@@ -1,6 +1,6 @@
 "use client"
 
-import type { AdventureStep, GameAction, Character } from "@/models/types"
+import type { GameAction, Character, CharacterStats } from "@/models/types"
 import { useIndexedDBService } from "@/services/indexed-db.service"
 
 export function useGameService() {
@@ -9,10 +9,20 @@ export function useGameService() {
   const API_ENDPOINT = "/api/game"
 
   const verifyRequirements = async (action: GameAction, character: Character): Promise<boolean> => {
-    // In a real app, this would check the character's stats and inventory
-    // against the action's requirements
 
-    // For this demo, we'll just return true
+
+    if (stats ) {
+      // assert that, for all stats in requirements, the character has the required min value
+      // TODO: improvement => allow requirements to need a specific operator on stats (i.e. stupid actions for low intelligence characters)
+      for (const stat in stats) {
+        if (character.stats[stat as keyof CharacterStats] < stats[stat as keyof CharacterStats]!) {
+          return false
+        }
+      }
+    }
+
+    // TODO: Check items once the character has an inventory
+
     return true
   }
 
