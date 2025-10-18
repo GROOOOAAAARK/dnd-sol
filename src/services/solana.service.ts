@@ -1,9 +1,12 @@
 "use client"
 
-import { BorshAccountsCoder } from "@coral-xyz/anchor"
-import { Connection, PublicKey } from "@solana/web3.js"
-import type { Character } from "@/models/types"
+import { BorshAccountsCoder, Program, AnchorProvider } from "@coral-xyz/anchor"
+import { Keypair, PublicKey, SystemProgram } from "@solana/web3.js"
+import type { Character, DiceResult } from "@/models/types"
 import DndSolIDL from "@/idl/dnd_sol.json"
+import { useConnection, useAnchorWallet } from "@solana/wallet-adapter-react"
+import { useCharacterStore } from "@/stores/selectedCharacter.store"
+import { useMemo } from "react"
 
 export function useSolanaService() {
   const { connection } = useConnection()
