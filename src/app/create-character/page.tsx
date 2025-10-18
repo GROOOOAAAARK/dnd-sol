@@ -30,15 +30,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
-import { AnchorProvider, Program } from "@coral-xyz/anchor";
-import { useConnection, useAnchorWallet } from "@solana/wallet-adapter-react";
-import { PublicKey, Keypair, SystemProgram } from "@solana/web3.js";
+import { useAnchorWallet } from "@solana/wallet-adapter-react";
 import { characterClasses, characterRaces } from "@/constants/character";
 import { useCharacterStore } from "@/stores/selectedCharacter.store";
 import { useCharactersStore } from "@/stores/characters.store";
-import dndSolIdl from "@/idl/dnd_sol.json";
 import { Character } from "@/models/types";
 import { CharacterStats } from '../../models/types';
+import { useSolanaService } from "@/services/solana.service";
 
 const formSchema = z
   .object({
@@ -69,7 +67,7 @@ const formSchema = z
       10,
     {
       message: "Total of all stats must equal 10",
-      path: ["charisma"],
+      path: [""],
     }
   );
 
