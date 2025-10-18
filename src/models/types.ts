@@ -68,3 +68,11 @@ export interface AdventureStep {
   image?: string;
   actions: GameAction[];
 }
+
+export interface DiceResult {
+  raw_result: number;
+  bonus: number;
+  success: boolean;
+  critical_success: boolean;
+  critical_failure: boolean;
+}
