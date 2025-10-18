@@ -6,8 +6,22 @@ import type { Character } from "@/models/types"
 import DndSolIDL from "@/idl/dnd_sol.json"
 
 export function useSolanaService() {
-  const getCharacters = async (connection: Connection): Promise<Character[]> => {
+  const { connection } = useConnection()
+  const wallet = useAnchorWallet()
+  const { selectedCharacter } = useCharacterStore()
+
+  // Create provider and program only when wallet is available
+  const program = useMemo(() => {
+    if (!wallet) return null
+    const provider = new AnchorProvider(connection, wallet, AnchorProvider.defaultOptions())
+    return new Program(DndSolIDL, provider)
+  }, [connection, wallet])
+  const getCharacters = async (): Promise<Character[]> => {
+    if (!wallet || !program) {
+      throw new Error("Wallet not connected")
+    }
     try {
+
       // Create a coder to decode the account data
       const coder = new BorshAccountsCoder(DndSolIDL as any)
 
