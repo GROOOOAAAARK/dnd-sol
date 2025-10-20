@@ -33,7 +33,8 @@ export interface Adventure {
 export interface DiceRollParams {
   sides: number;
   rolls: number;
-  min: number;
+  success_floor: number;
+  bonus?: number;
 }
 
 // Game types
