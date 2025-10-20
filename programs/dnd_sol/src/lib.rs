@@ -116,8 +116,6 @@ pub mod dnd_sol {
 
         Ok(rolling_result)
     }
-
-    // pub fn get_character()
 }
 
 #[derive(Accounts)]
@@ -257,14 +255,6 @@ impl Character {
         charisma: u8,
     ) -> Result<Character> {
         let character: &mut Character = &mut Default::default();
-
-        if strength + dexterity + constitution + intelligence + wisdom + charisma > 10 {
-            return Err(ErrorCode::StatsTooHigh.into());
-        }
-
-        if strength + dexterity + constitution + intelligence + wisdom + charisma < 10 {
-            return Err(ErrorCode::StatsTooLow.into());
-        }
 
         let attributes = CharacterAttributes {
             name,
