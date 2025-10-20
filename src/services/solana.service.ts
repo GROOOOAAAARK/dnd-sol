@@ -115,7 +115,7 @@ export function useSolanaService() {
   }
 
   return {
+    createCharacter,
     getCharacters,
   }
 }
-
