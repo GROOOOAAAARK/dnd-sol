@@ -5,7 +5,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
   const adventureId = params.id
 
   // Simulate network delay
-  await new Promise((resolve) => setTimeout(resolve, 800))
+  await new Promise((resolve) => setTimeout(resolve, 500))
 
   const gameStep = mockGameSteps[adventureId]
 
