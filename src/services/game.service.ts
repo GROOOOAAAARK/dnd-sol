@@ -10,6 +10,7 @@ export function useGameService() {
 
   const verifyRequirements = async (action: GameAction, character: Character): Promise<boolean> => {
 
+    const { stats } = action.requirements || {}
 
     if (stats ) {
       // assert that, for all stats in requirements, the character has the required min value
