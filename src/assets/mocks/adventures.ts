@@ -113,13 +113,10 @@ export const mockGameSteps: Record<string, AdventureStep> = {
         description:
           "Pull the rope and ring the ancient bell to announce your presence.",
         success_next_step_id: "step_adv4_bell_success",
-        requirements: {
-          stats: { charisma: 12 },
-        },
         dice_roll_params: {
           sides: 20,
           rolls: 1,
-          min: 10,
+          success_floor: 10,
         },
       },
       {
@@ -128,13 +125,14 @@ export const mockGameSteps: Record<string, AdventureStep> = {
         description:
           "Attempt to slip through the doors quietly and undetected.",
         success_next_step_id: "step_adv4_enter_success",
+        failure_next_step_id: "step_adv4_enter_failure",
         requirements: {
-          stats: { dexterity: 14 },
+          stats: { dexterity: 5 },
         },
         dice_roll_params: {
           sides: 20,
           rolls: 1,
-          min: 12,
+          success_floor: 12,
         },
       },
       {
@@ -149,7 +147,7 @@ export const mockGameSteps: Record<string, AdventureStep> = {
         dice_roll_params: {
           sides: 20,
           rolls: 1,
-          min: 11,
+          success_floor: 11,
         },
       },
     ],
@@ -175,7 +173,7 @@ export const mockGameSteps: Record<string, AdventureStep> = {
         dice_roll_params: {
           sides: 20,
           rolls: 1,
-          min: 14,
+          success_floor: 14,
         },
       },
       {
@@ -190,7 +188,7 @@ export const mockGameSteps: Record<string, AdventureStep> = {
         dice_roll_params: {
           sides: 20,
           rolls: 1,
-          min: 8,
+          success_floor: 8,
         },
       },
       {
@@ -204,7 +202,7 @@ export const mockGameSteps: Record<string, AdventureStep> = {
         dice_roll_params: {
           sides: 20,
           rolls: 1,
-          min: 13,
+          success_floor: 13,
         },
       },
     ],
@@ -229,7 +227,7 @@ export const mockGameSteps: Record<string, AdventureStep> = {
         dice_roll_params: {
           sides: 20,
           rolls: 2,
-          min: 15,
+          success_floor: 15,
         },
       },
       {
@@ -242,7 +240,7 @@ export const mockGameSteps: Record<string, AdventureStep> = {
         dice_roll_params: {
           sides: 20,
           rolls: 1,
-          min: 10,
+          success_floor: 10,
         },
       },
       {
@@ -256,7 +254,7 @@ export const mockGameSteps: Record<string, AdventureStep> = {
         dice_roll_params: {
           sides: 20,
           rolls: 1,
-          min: 16,
+          success_floor: 16,
         },
       },
     ],
@@ -279,7 +277,7 @@ export const mockGameSteps: Record<string, AdventureStep> = {
         dice_roll_params: {
           sides: 20,
           rolls: 1,
-          min: 15,
+          success_floor: 15,
         },
       },
       {
@@ -293,7 +291,7 @@ export const mockGameSteps: Record<string, AdventureStep> = {
         dice_roll_params: {
           sides: 20,
           rolls: 1,
-          min: 14,
+          success_floor: 14,
         },
       },
       {
@@ -307,7 +305,7 @@ export const mockGameSteps: Record<string, AdventureStep> = {
         dice_roll_params: {
           sides: 20,
           rolls: 1,
-          min: 11,
+          success_floor: 11,
         },
       },
     ],
@@ -333,7 +331,7 @@ export const mockGameSteps: Record<string, AdventureStep> = {
         dice_roll_params: {
           sides: 20,
           rolls: 1,
-          min: 8,
+          success_floor: 8,
         },
       },
       {
@@ -347,7 +345,7 @@ export const mockGameSteps: Record<string, AdventureStep> = {
         dice_roll_params: {
           sides: 20,
           rolls: 1,
-          min: 12,
+          success_floor: 12,
         },
       },
       {
@@ -361,7 +359,7 @@ export const mockGameSteps: Record<string, AdventureStep> = {
         dice_roll_params: {
           sides: 20,
           rolls: 1,
-          min: 10,
+          success_floor: 10,
         },
       },
     ],
@@ -387,7 +385,7 @@ export const mockGameSteps: Record<string, AdventureStep> = {
         dice_roll_params: {
           sides: 20,
           rolls: 1,
-          min: 15,
+          success_floor: 15,
         },
       },
       {
@@ -401,7 +399,7 @@ export const mockGameSteps: Record<string, AdventureStep> = {
         dice_roll_params: {
           sides: 20,
           rolls: 1,
-          min: 13,
+          success_floor: 13,
         },
       },
       {
@@ -415,7 +413,7 @@ export const mockGameSteps: Record<string, AdventureStep> = {
         dice_roll_params: {
           sides: 20,
           rolls: 2,
-          min: 14,
+          success_floor: 14,
         },
       },
     ],
@@ -442,7 +440,7 @@ export const mockGameSteps: Record<string, AdventureStep> = {
         dice_roll_params: {
           sides: 20,
           rolls: 1,
-          min: 14,
+          success_floor: 14,
         },
       },
       {
@@ -456,7 +454,7 @@ export const mockGameSteps: Record<string, AdventureStep> = {
         dice_roll_params: {
           sides: 20,
           rolls: 1,
-          min: 13,
+          success_floor: 13,
         },
       },
       {
@@ -470,7 +468,7 @@ export const mockGameSteps: Record<string, AdventureStep> = {
         dice_roll_params: {
           sides: 20,
           rolls: 2,
-          min: 16,
+          success_floor: 16,
         },
       },
     ],
@@ -496,7 +494,7 @@ export const mockGameSteps: Record<string, AdventureStep> = {
         dice_roll_params: {
           sides: 20,
           rolls: 1,
-          min: 10,
+          success_floor: 10,
         },
       },
       {
@@ -510,7 +508,7 @@ export const mockGameSteps: Record<string, AdventureStep> = {
         dice_roll_params: {
           sides: 20,
           rolls: 1,
-          min: 9,
+          success_floor: 9,
         },
       },
       {
@@ -524,7 +522,7 @@ export const mockGameSteps: Record<string, AdventureStep> = {
         dice_roll_params: {
           sides: 20,
           rolls: 1,
-          min: 11,
+          success_floor: 11,
         },
       },
     ],
@@ -549,7 +547,7 @@ export const mockGameSteps: Record<string, AdventureStep> = {
         dice_roll_params: {
           sides: 20,
           rolls: 1,
-          min: 12,
+          success_floor: 12,
         },
       },
       {
@@ -564,7 +562,7 @@ export const mockGameSteps: Record<string, AdventureStep> = {
         dice_roll_params: {
           sides: 20,
           rolls: 1,
-          min: 14,
+          success_floor: 14,
         },
       },
       {
@@ -577,7 +575,7 @@ export const mockGameSteps: Record<string, AdventureStep> = {
         dice_roll_params: {
           sides: 20,
           rolls: 1,
-          min: 16,
+          success_floor: 16,
         },
       },
     ],
@@ -603,7 +601,7 @@ export const mockGameSteps: Record<string, AdventureStep> = {
         dice_roll_params: {
           sides: 20,
           rolls: 1,
-          min: 12,
+          success_floor: 12,
         },
       },
       {
@@ -616,7 +614,7 @@ export const mockGameSteps: Record<string, AdventureStep> = {
         dice_roll_params: {
           sides: 20,
           rolls: 1,
-          min: 13,
+          success_floor: 13,
         },
       },
       {
@@ -630,7 +628,7 @@ export const mockGameSteps: Record<string, AdventureStep> = {
         dice_roll_params: {
           sides: 20,
           rolls: 1,
-          min: 11,
+          success_floor: 11,
         },
       },
     ],
