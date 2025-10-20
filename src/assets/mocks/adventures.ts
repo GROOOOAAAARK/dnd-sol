@@ -12,22 +12,6 @@ export const mockAdventures: Adventure[] = [
     first_step_id: "step1_adv1",
   },
   {
-    id: "adv2",
-    title: "The Dark Forest",
-    description:
-      "Venture into the mysterious forest where creatures of shadow lurk. Find the source of the corruption.",
-    level: 2,
-    image: "/placeholder.svg?height=200&width=400&text=Dark+Forest",
-  },
-  {
-    id: "adv3",
-    title: "Mountain of Doom",
-    description:
-      "Climb the treacherous mountain to confront an ancient dragon that has terrorized the region.",
-    level: 3,
-    image: "/placeholder.svg?height=200&width=400&text=Mountain+of+Doom",
-  },
-  {
     id: "adv4",
     title: "The Shadow Keep",
     description:
@@ -64,12 +48,6 @@ export const mockGameSteps: Record<string, AdventureStep> = {
           "Look for clues, hidden mechanisms, or valuable items before proceeding.",
         success_next_step_id: "stepSearchEntranceOngoing",
       },
-      {
-        id: "action3",
-        title: "Light a torch",
-        description:
-          "Prepare a light source to better see what lies ahead in the darkness.",
-      },
     ],
   },
   stepEnteredCautiouslySuccess: {
@@ -92,7 +70,7 @@ export const mockGameSteps: Record<string, AdventureStep> = {
         title: "Get back to the door",
         description:
           "Get back from where you come from, in front of the dungeon's entrance.",
-        next_step_id: "step1_adv1",
+        success_next_step_id: "step1_adv1",
       },
     ],
   },
