@@ -114,8 +114,63 @@ export function useSolanaService() {
     }
   }
 
+  const doAction = async (diceSize: number, successFloor: number, bonus: number): Promise<void> => {
+    if (!wallet || !program) {
+      throw new Error("Wallet not connected")
+    }
+    try {
+      if (!selectedCharacter) {
+        throw new Error("No selected character")
+      }
+      await program.methods.doAction(diceSize, successFloor, bonus).accounts({
+        character: new PublicKey(selectedCharacter.id!),
+        player: wallet.publicKey,
+        systemProgram: SystemProgram.programId,
+      })
+      .signers([])
+      .rpc();
+    } catch (error) {
+      console.error("Failed to do action:", error)
+    }
+  }
+
+  const revealActionResult = async (diceSize: number, successFloor: number, bonus: number): Promise<DiceResult> => {
+    if (!wallet || !program) {
+      throw new Error("Wallet not connected")
+    }
+    try {
+      if (!selectedCharacter) {
+        throw new Error("No selected character")
+      }
+      const characterPk = new PublicKey(selectedCharacter.id!)
+      const coder = new BorshAccountsCoder(DndSolIDL as any)
+
+      const result = await program.methods.revealActionResult().accounts({
+        character: characterPk,
+        player: wallet.publicKey,
+        systemProgram: SystemProgram.programId,
+      }
+      // ).signers([characterPk]
+      ).args([diceSize, successFloor, bonus])
+
+      const decoded = coder.decode("DiceResult", result.data);
+
+      return {
+        raw_result: decoded.raw_result,
+        bonus: decoded.bonus,
+        success: decoded.success,
+        critical_success: decoded.critical_success,
+        critical_failure: decoded.critical_failure,
+      }
+    } catch (error) {
+      throw error
+    }
+  }
+
   return {
     createCharacter,
     getCharacters,
+    doAction,
+    revealActionResult,
   }
 }
