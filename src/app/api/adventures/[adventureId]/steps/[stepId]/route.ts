@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server"
 import { mockAdventures, mockGameSteps } from "@/assets/mocks/adventures"
 
-export async function GET(request: Request, { params }: { params: { adventureId: string, stepId: string } }) {
+export async function GET(
+  request: Request,
+  props: { params: Promise<{ adventureId: string, stepId: string }> }
+) {
+  const params = await props.params;
   const adventureId = params.adventureId
   const stepId = params.stepId
 

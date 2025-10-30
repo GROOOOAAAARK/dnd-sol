@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server"
 import { mockAdventures } from "@/assets/mocks/adventures"
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const id = params.id
 
   // Simulate network delay
