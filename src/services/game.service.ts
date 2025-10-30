@@ -1,15 +1,13 @@
 "use client"
 
 import type { GameAction, Character, CharacterStats } from "@/models/types"
-import { useIndexedDBService } from "@/services/indexed-db.service"
 
 export function useGameService() {
-  const dbService = useIndexedDBService()
-  const STORE_NAME = "gameSteps"
   const API_ENDPOINT = "/api/game"
 
   const verifyRequirements = async (action: GameAction, character: Character): Promise<boolean> => {
 
+    // TODO: handle items from requirements
     const { stats } = action.requirements || {}
 
     if (stats ) {
