@@ -8,14 +8,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 import { useGameService } from "@/services/game.service";
 import { useAdventureService } from "@/services/adventure.service";
-import type { AdventureStep, Character, GameAction } from "@/models/types";
+import type { AdventureStep, GameAction } from "@/models/types";
 import { useCharacterStore } from "@/stores/selectedCharacter.store";
+import { useSolanaService } from "@/services/solana.service";
 
 export default function GamePage() {
   const params = useParams();
   const router = useRouter();
   const adventureService = useAdventureService();
   const gameService = useGameService();
+  const solanaService = useSolanaService();
   const [currentStep, setCurrentStep] = useState<AdventureStep | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -76,10 +78,14 @@ export default function GamePage() {
       }
 
       const { verifyRequirements } = gameServiceRef.current;
+      const { doAction } = solanaService;
       const { getNextStep } = adventureServiceRef.current;
       const isValid = await verifyRequirements(action, character!);
 
       if (isValid && currentStep) {
+        if (action.dice_roll_params) {
+          await doAction(action.dice_roll_params.sides, action.dice_roll_params.success_floor, action.dice_roll_params.bonus || 0);
+        }
         const nextStep = await getNextStep(adventureId, action.success_next_step_id!);
         setCurrentStep(nextStep);
       } else {
