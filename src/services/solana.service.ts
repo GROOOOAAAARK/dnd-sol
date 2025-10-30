@@ -3,15 +3,16 @@
 import { BorshAccountsCoder, Program, AnchorProvider } from "@coral-xyz/anchor"
 import { Keypair, PublicKey, SystemProgram } from "@solana/web3.js"
 import type { Character, DiceResult } from "@/models/types"
-import DndSolIDL from "@/idl/dnd_sol.json"
+import DndSolIDL from "@/idl/dnd_sol.json";
 import { useConnection, useAnchorWallet } from "@solana/wallet-adapter-react"
 import { useCharacterStore } from "@/stores/selectedCharacter.store"
 import { useMemo } from "react"
 
 export function useSolanaService() {
   const { connection } = useConnection()
-  const wallet = useAnchorWallet()
+  const wallet = useAnchorWallet();
   const { selectedCharacter } = useCharacterStore()
+  const dndSolProgramId = new PublicKey(process.env.NEXT_PUBLIC_DND_PROGRAM_ADDRESS!)
 
   // Create provider and program only when wallet is available
   const program = useMemo(() => {
@@ -41,7 +42,7 @@ export function useSolanaService() {
         player: wallet.publicKey,
         character: characterKp.publicKey,
         systemProgram: SystemProgram.programId,
-      }).signers([characterKp]).rpc();
+      }).signers([characterKp]).rpc(); // TODO: test with player keypair from wallet
     } catch (error) {
       console.error("Failed to create character:", error)
       throw error
@@ -59,7 +60,7 @@ export function useSolanaService() {
 
       // Get all program accounts (this will return raw data for custom programs)
       const accountsResponse = await connection.getProgramAccounts(
-        new PublicKey(process.env.NEXT_PUBLIC_DND_PROGRAM_ADDRESS!),
+        dndSolProgramId,
         {
           commitment: "confirmed",
         },
@@ -127,7 +128,7 @@ export function useSolanaService() {
         player: wallet.publicKey,
         systemProgram: SystemProgram.programId,
       })
-      .signers([])
+      .signers([]) // TODO: sign with player wallet keypair, should be the issue here
       .rpc();
     } catch (error) {
       console.error("Failed to do action:", error)
@@ -149,9 +150,7 @@ export function useSolanaService() {
         character: characterPk,
         player: wallet.publicKey,
         systemProgram: SystemProgram.programId,
-      }
-      // ).signers([characterPk]
-      ).args([diceSize, successFloor, bonus])
+      }).args([diceSize, successFloor, bonus])
 
       const decoded = coder.decode("DiceResult", result.data);
 
