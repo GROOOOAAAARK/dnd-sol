@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
@@ -14,12 +14,13 @@ export default function AdventuresPage() {
   const [newAdventures, setNewAdventures] = useState<Adventure[]>([])
   const [loading, setLoading] = useState(true)
   const adventureService = useAdventureService()
+  const adventureServiceRef = useRef(adventureService)
 
   useEffect(() => {
     const fetchAdventures = async () => {
       try {
-        const ongoing = await adventureService.getOngoingAdventures()
-        const available = await adventureService.getAvailableAdventures()
+        const ongoing = await adventureServiceRef.current.getOngoingAdventures()
+        const available = await adventureServiceRef.current.getAvailableAdventures()
 
         setOngoingAdventures(ongoing)
         setNewAdventures(available)
@@ -31,7 +32,7 @@ export default function AdventuresPage() {
     }
 
     fetchAdventures()
-  }, [adventureService])
+  }, [])
 
   if (loading) {
     return (
