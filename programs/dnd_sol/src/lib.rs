@@ -14,7 +14,7 @@ pub mod dnd_sol {
     }
 
     pub fn create_character(
-        ctx: Context<CharacterScope>,
+        ctx: Context<CreateCharacter>,
         name: String,
         character_class: String,
         character_race: String,
@@ -26,7 +26,8 @@ pub mod dnd_sol {
         charisma: u8,
     ) -> Result<()> {
         let character = Character::create(
-            ctx,
+            &mut ctx.accounts.character,
+            &ctx.accounts.player,
             name,
             character_class.into(),
             character_race.into(),
@@ -258,7 +259,8 @@ impl Character {
                              2; // max_health
 
     pub fn create(
-        ctx: Context<CharacterScope>,
+        character_account: &mut Account<CharacterAccount>,
+        player: &Signer,
         name: String,
         character_class: CharacterClass,
         character_race: CharacterRace,
@@ -269,7 +271,8 @@ impl Character {
         wisdom: u8,
         charisma: u8,
     ) -> Result<Character> {
-        let character: &mut Character = &mut Default::default();
+
+        let mut character = Character::default();
 
         let attributes = CharacterAttributes {
             name,
@@ -297,8 +300,8 @@ impl Character {
             return Err(ErrorCode::CharacterCreationNotFair.into());
         }
 
-        ctx.accounts.character.character = character.clone();
-        ctx.accounts.character.player = ctx.accounts.player.key();
+        character_account.character = character.clone();
+        character_account.player = player.key();
         Ok(character.clone())
     }
 
