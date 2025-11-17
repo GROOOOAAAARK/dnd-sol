@@ -123,7 +123,9 @@ pub struct Initialize<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
 
-    #[account(init, payer=payer, space = 8+Character::SPACE, seeds = [b"dnd_sol"], bump)]
+    pub system_program: Program<'info, System>,
+}
+
     pub character: Account<'info, CharacterAccount>,
 
     pub system_program: Program<'info, System>,
