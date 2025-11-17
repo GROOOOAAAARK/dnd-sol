@@ -26,7 +26,14 @@ export function useSolanaService() {
       throw new Error("Wallet not connected")
     }
     try {
-      const characterKp = new Keypair();
+      const [characterAccountPda] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("character"),
+          wallet.publicKey.toBuffer(),
+          Buffer.from(character.name),
+        ], // must match seeds in Solana program
+        dndSolProgramId,
+      );
 
       await program.methods.createCharacter(
         character.name,
@@ -40,9 +47,9 @@ export function useSolanaService() {
         character.stats.charisma
       ).accounts({
         player: wallet.publicKey,
-        character: characterKp.publicKey,
+        character: characterAccountPda,
         systemProgram: SystemProgram.programId,
-      }).signers([characterKp]).rpc(); // TODO: test with player keypair from wallet
+      }).rpc();
     } catch (error) {
       console.error("Failed to create character:", error)
       throw error
