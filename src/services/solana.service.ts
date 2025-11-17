@@ -79,6 +79,12 @@ export function useSolanaService() {
           // The account data is in accountInfo.account.data (Buffer)
           const decoded = coder.decode("CharacterAccount", accountInfo.account.data)
 
+          const player = decoded.player.toBase58()
+
+          if (player !== wallet?.publicKey?.toBase58()) {
+            return null
+          }
+
           // Helper function to extract enum variant name
           const getEnumVariant = (enumObj: any): string => {
             if (typeof enumObj === 'string') return enumObj
@@ -135,7 +141,6 @@ export function useSolanaService() {
         player: wallet.publicKey,
         systemProgram: SystemProgram.programId,
       })
-      .signers([]) // TODO: sign with player wallet keypair, should be the issue here
       .rpc();
     } catch (error) {
       console.error("Failed to do action:", error)
