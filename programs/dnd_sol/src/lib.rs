@@ -149,7 +149,7 @@ pub struct CharacterScope<'info> {
     #[account(mut)]
     pub player: Signer<'info>,
 
-    #[account(init, payer=player, space = 8+Character::SPACE)]
+    #[account(mut, has_one = player)]
     pub character: Account<'info, CharacterAccount>,
 
     pub system_program: Program<'info, System>,
