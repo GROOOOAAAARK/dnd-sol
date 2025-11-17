@@ -126,6 +126,19 @@ pub struct Initialize<'info> {
     pub system_program: Program<'info, System>,
 }
 
+#[derive(Accounts)]
+#[instruction(name: String)]
+pub struct CreateCharacter<'info> {
+    #[account(mut)]
+    pub player: Signer<'info>,
+
+    #[account(
+        init,
+        payer=player,
+        space = 8+Character::SPACE,
+        seeds = [b"character", player.key().as_ref(), name.as_bytes()],
+        bump
+    )]
     pub character: Account<'info, CharacterAccount>,
 
     pub system_program: Program<'info, System>,
