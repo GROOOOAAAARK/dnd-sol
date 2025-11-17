@@ -10,18 +10,20 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useCharacterStore } from "@/stores/selectedCharacter.store"
 import { useCharactersStore } from "@/stores/characters.store"
+import { useAnchorWallet } from "@solana/wallet-adapter-react"
 
 export default function AccountPage() {
   const [loading, setLoading] = useState(true)
   const router = useRouter()
   const { selectedCharacter, setCharacter } = useCharacterStore()
   const { characters, setCharacters } = useCharactersStore()
-  const solanaServiceRef = useRef(useSolanaService())
+  const solanaService = useSolanaService()
+  const wallet = useAnchorWallet()
 
   useEffect(() => {
     const fetchCharacters = async () => {
       try {
-        const decodedCharacters = await solanaServiceRef.current.getCharacters()
+        const decodedCharacters = await solanaService.getCharacters()
 
         setCharacters(decodedCharacters)
 
@@ -33,7 +35,7 @@ export default function AccountPage() {
     }
 
     fetchCharacters()
-  }, [setCharacters])
+  }, [wallet])
 
   const handleSelectCharacter = (character: Character) => {
     setCharacter(character)
