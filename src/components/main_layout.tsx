@@ -26,7 +26,7 @@ export default function MainLayout({
 
   return (
     <ConnectionProvider endpoint={endpoint}>
-      <WalletProvider wallets={wallets}>
+      <WalletProvider autoConnect={true} wallets={wallets}>
         <WalletModalProvider>
           <ThemeProvider
             attribute="class"
