@@ -8,7 +8,7 @@ export const mockAdventures: Adventure[] = [
     description:
       "Explore ancient ruins filled with traps and treasures. Legend says a powerful artifact lies within.",
     level: 1,
-    image: "/placeholder.svg?height=200&width=400&text=Forgotten+Ruins",
+    image: "/images/forgotten-ruins.png",
     first_step_id: "step1_adv1",
   },
   {
@@ -17,7 +17,7 @@ export const mockAdventures: Adventure[] = [
     description:
       "A foreboding dungeon carved into the hillside. Dark rumors speak of treasures guarded by unspeakable horrors within its depths.",
     level: 1,
-    image: "/placeholder.svg?height=200&width=400&text=Shadow+Keep",
+    image: "/images/shadow-keep.png",
     first_step_id: "step1_adv4",
   },
 ];
