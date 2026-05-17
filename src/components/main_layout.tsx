@@ -18,9 +18,9 @@ export default function MainLayout({
   children: React.ReactNode;
 }) {
   const endpoint =
-    process.env.NEXT_SOLANA_CLUSTER == "localnet"
+    process.env.NEXT_PUBLIC_SOLANA_CLUSTER == "localnet"
     ? localnet
-    : clusterApiUrl(process.env.NEXT_SOLANA_CLUSTER as Cluster, true);
+    : clusterApiUrl(process.env.NEXT_PUBLIC_SOLANA_CLUSTER as Cluster, true);
   const wallets = useMemo(() => [], []);
 
   return (
