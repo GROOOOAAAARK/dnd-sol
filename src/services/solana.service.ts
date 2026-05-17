@@ -18,8 +18,16 @@ export function useSolanaService() {
   const program = useMemo(() => {
     if (!wallet) return null
     const provider = new AnchorProvider(connection, wallet, AnchorProvider.defaultOptions())
-    return new Program(DndSolIDL, provider)
-  }, [connection, wallet])
+    return new Program(DndSolIDL, provider);
+  }, [connection, wallet]);
+
+  const diceRollProgram = useMemo(() => {
+    if (!wallet) return null;
+    const provider = new AnchorProvider(connection, wallet, AnchorProvider.defaultOptions())
+    return new Program(DiceRollIDL, provider);
+  }, [connection, wallet]);
+
+  const isLocalnet = process.env.NEXT_PUBLIC_SOLANA_CLUSTER === "localnet";
 
   const createCharacter = async (character: Character): Promise<void> => {
     if (!wallet || !program) {
