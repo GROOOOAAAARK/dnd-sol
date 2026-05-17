@@ -5,8 +5,8 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-dice_rolling = "8hnfFWuaYoWLMRnbZQooAktufsePATnNDruWMmH9MrBu"
-dnd_sol = "4pCS5wMzpCpmVALCtiH2HMFSQ5AASYXA4VSXpXVXBvn1"
+dice_rolling = "LTwGJmVKw2FkgByX2JehTkS2AqddnniuA2jyV4zZzwv"
+dnd_sol = "5XQUKVykhN5D3WkJ1MdsRxaJDmEszjRzhje3e6TjF4Wd"
 
 [registry]
 url = "https://api.apr.dev"

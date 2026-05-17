@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_lang::solana_program::{instruction::Instruction, program::invoke};
 use anchor_lang::{AnchorDeserialize, AnchorSerialize, ToAccountInfo};
 
-declare_id!("4pCS5wMzpCpmVALCtiH2HMFSQ5AASYXA4VSXpXVXBvn1");
+declare_id!("5XQUKVykhN5D3WkJ1MdsRxaJDmEszjRzhje3e6TjF4Wd");
 
 #[program]
 pub mod dnd_sol {

@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use switchboard_on_demand::RandomnessAccountData;
 
-declare_id!("8hnfFWuaYoWLMRnbZQooAktufsePATnNDruWMmH9MrBu");
+declare_id!("LTwGJmVKw2FkgByX2JehTkS2AqddnniuA2jyV4zZzwv");
 
 #[program]
 pub mod dice_rolling {
