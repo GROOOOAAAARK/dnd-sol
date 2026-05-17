@@ -1,8 +1,7 @@
 "use client";
 
-import { clusterApiUrl } from "@solana/web3.js";
 import "@solana/wallet-adapter-react-ui/styles.css";
-
+import { Cluster, clusterApiUrl } from "@solana/web3.js";
 import { ThemeProvider } from "@/components/theme-provider";
 import Header from "@/components/header";
 import {
@@ -19,9 +18,9 @@ export default function MainLayout({
   children: React.ReactNode;
 }) {
   const endpoint =
-    process.env.NEXT_PUBLIC_APP_ENV === "dev"
-      ? localnet
-      : clusterApiUrl("devnet");
+    process.env.NEXT_SOLANA_CLUSTER == "localnet"
+    ? localnet
+    : clusterApiUrl(process.env.NEXT_SOLANA_CLUSTER as Cluster, true);
   const wallets = useMemo(() => [], []);
 
   return (
