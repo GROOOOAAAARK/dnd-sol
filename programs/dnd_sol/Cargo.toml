@@ -21,7 +21,7 @@ custom-panic = []
 
 [dependencies]
 anchor-lang = "0.31.0"
-dice_rolling = {path = "../dice_rolling", features = ["no-entrypoint"]}
+dice_rolling = {path = "../dice_rolling", features = ["cpi"]}
 
 [dev-dependencies]
 litesvm = "0.7.1"
