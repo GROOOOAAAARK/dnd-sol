@@ -78,15 +78,29 @@ export default function GamePage() {
       }
 
       const { verifyRequirements } = gameServiceRef.current;
-      const { doAction } = solanaService;
+      const { performDiceAction } = solanaService;
       const { getNextStep } = adventureServiceRef.current;
       const isValid = await verifyRequirements(action, character!);
 
       if (isValid && currentStep) {
+        let nextStepId = action.default_next_step_id ?? action.success_next_step_id;
+
         if (action.dice_roll_params) {
-          await doAction(action.dice_roll_params.sides, action.dice_roll_params.success_floor, action.dice_roll_params.bonus || 0);
+          const result = await performDiceAction(
+            action.dice_roll_params.sides,
+            action.dice_roll_params.success_floor,
+            action.dice_roll_params.bonus || 0,
+          );
+          nextStepId = result.success
+            ? action.success_next_step_id
+            : action.failure_next_step_id ?? action.default_next_step_id;
         }
-        const nextStep = await getNextStep(adventureId, action.success_next_step_id!);
+
+        if (!nextStepId) {
+          throw new Error("Action has no next step configured");
+        }
+
+        const nextStep = await getNextStep(adventureId, nextStepId);
         setCurrentStep(nextStep);
       } else {
         // Show some feedback that the action cannot be performed
