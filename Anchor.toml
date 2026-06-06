@@ -16,6 +16,21 @@ cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
-ts-test = "bunx ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
 e2e-test = "cargo test-sbf --manifest-path ./Cargo.toml -- -- --nocapture"
 test = "cargo test-sbf --manifest-path ./programs/dnd_sol/Cargo.toml -- -- --nocapture"
+ts-test = "bunx ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+
+[test]
+startup_wait = 30000
+
+[test.validator]
+url = "https://api.devnet.solana.com"
+bind_address = "127.0.0.1"
+rpc_port = 8899
+ledger = ".anchor/test-ledger"
+
+[[test.validator.clone]]
+address = "Aio4gaXjXzJNVLtzwtNVmSqGKpANtXhybbkhtAC94ji2"
+
+[[test.validator.clone]]
+address = "EYiAmGSdsQTuCw413V5BzaruWuCCSDgTPtBGvLkXHbe7"
