@@ -20,18 +20,21 @@ pub mod dice_rolling {
         Ok(())
     }
 
-    pub fn roll_and_reveal(
-        ctx: Context<CommitRoll>,
+    pub fn commit_roll(
+        ctx: Context<DiceRoll>,
         dice_size: u8,
         success_floor: u8,
         bonus: u8,
-    ) -> Result<DiceResult> {
-        let rolling_committed = DiceRollingState::roll(ctx, dice_size, success_floor, bonus, randomness_account)?;
+    ) -> Result<bool> {
+        let rolling_committed = DiceRollingState::commit(ctx, dice_size, success_floor, bonus)?;
         if !rolling_committed {
             return Err(ErrorCode::RollingNotCommitted.into());
         }
-        let dice_result = DiceRollingState::settle(ctx)?;
-        Ok(dice_result)
+        Ok(rolling_committed)
+    }
+
+    pub fn reveal_roll(ctx: Context<DiceRoll>) -> Result<DiceResult> {
+        DiceRollingState::reveal(ctx)
     }
 }
 
@@ -44,38 +47,45 @@ impl DiceRollingState {
     8 + // bonus
     1; // bump
 
-    fn roll(
+    fn commit(
         ctx: Context<DiceRoll>,
         dice_size: u8,
         success_floor: u8,
         bonus: u8,
-        randomness_account: Pubkey,
     ) -> Result<bool> {
         let dice_rolling = &mut ctx.accounts.dice_rolling;
 
         if dice_size < 2 {
             return Err(ErrorCode::DiceSizeTooLow.into());
         }
-
-        dice_rolling.dice_size = dice_size;
-        dice_rolling.success_floor = success_floor;
-        dice_rolling.bonus = bonus;
+        if success_floor as u16 > dice_size as u16 + bonus as u16 {
+            return Err(ErrorCode::SuccessFloorTooHigh.into());
+        }
 
         let clock: Clock = Clock::get()?;
         let randomness_data =
             RandomnessAccountData::parse(ctx.accounts.randomness_account_data.data.borrow())
-                .unwrap();
-        if randomness_data.seed_slot != clock.slot - 1 {
+                .map_err(|_| ErrorCode::InvalidRandomnessAccount)?;
+        let expected_seed_slot = clock
+            .slot
+            .checked_sub(1)
+            .ok_or(ErrorCode::InvalidRandomnessSeedSlot)?;
+        if randomness_data.seed_slot != expected_seed_slot {
             msg!("seed_slot: {}", randomness_data.seed_slot);
             msg!("slot: {}", clock.slot);
-            return Err(ErrorCode::RandomnessAlreadyRevealed.into());
+            return Err(ErrorCode::InvalidRandomnessSeedSlot.into());
         }
 
-        dice_rolling.randomness_account = randomness_account;
+        dice_rolling.randomness_account = ctx.accounts.randomness_account_data.key();
+        dice_rolling.commit_slot = randomness_data.seed_slot;
+        dice_rolling.dice_size = dice_size;
+        dice_rolling.success_floor = success_floor;
+        dice_rolling.bonus = bonus;
+        dice_rolling.latest_roll_result = 0;
         Ok(true)
     }
 
-    fn settle(ctx: Context<DiceRoll>) -> Result<DiceResult> {
+    fn reveal(ctx: Context<DiceRoll>) -> Result<DiceResult> {
         let clock = Clock::get()?;
         let dice_rolling = &mut ctx.accounts.dice_rolling;
 
@@ -85,7 +95,7 @@ impl DiceRollingState {
 
         let randomness_data =
         RandomnessAccountData::parse(ctx.accounts.randomness_account_data.data.borrow())
-            .unwrap();
+            .map_err(|_| ErrorCode::InvalidRandomnessAccount)?;
 
         if randomness_data.seed_slot != dice_rolling.commit_slot {
                 return Err(ErrorCode::RandomnessExpired.into());
@@ -96,9 +106,14 @@ impl DiceRollingState {
         .get_value(&clock)
         .map_err(|_| ErrorCode::RandomnessNotResolved)?;
 
-        let modulated_random_value: u8 = revealed_random_value[0] % dice_rolling.dice_size;
+        let modulated_random_value = revealed_random_value[0] % dice_rolling.dice_size + 1;
 
-        let dice_result = Self::_build_dice_result(modulated_random_value, dice_rolling.bonus, dice_rolling.success_floor, dice_rolling.dice_size)?;
+        let dice_result = Self::_build_dice_result(
+            modulated_random_value,
+            dice_rolling.bonus,
+            dice_rolling.success_floor,
+            dice_rolling.dice_size,
+        )?;
 
         // Update and log the result
         dice_rolling.latest_roll_result = modulated_random_value;
@@ -114,7 +129,7 @@ impl DiceRollingState {
     ) -> Result<DiceResult> {
         let success = raw_value + bonus >= success_floor;
         let critical_success = raw_value == dice_size;
-        let critical_failure = raw_value == 0;
+        let critical_failure = raw_value == 1;
 
         Ok(DiceResult {
             raw_result: raw_value,
@@ -137,14 +152,34 @@ pub struct Initialize<'info> {
 
 #[derive(Accounts)]
 pub struct DiceRoll<'info> {
-    #[account(mut, seeds = [b"dice_rolling".as_ref(), user.key().as_ref()], bump = dice_rolling.bump)]
+    #[account(
+        mut,
+        seeds = [b"dice_rolling", user.key().as_ref()],
+        bump = dice_rolling.bump,
+        constraint = dice_rolling.allowed_user == user.key() @ ErrorCode::Unauthorized
+    )]
     pub dice_rolling: Account<'info, DiceRollingState>,
 
-    /// CHECK: This is a placeholder for the randomness account data
+    /// CHECK: Parsed and validated as Switchboard randomness state.
     pub randomness_account_data: AccountInfo<'info>,
 
     pub user: Signer<'info>,
-    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct RevealRoll<'info> {
+    #[account(
+        mut,
+        seeds = [b"dice_rolling", user.key().as_ref()],
+        bump = dice_rolling.bump,
+        constraint = dice_rolling.allowed_user == user.key() @ ErrorCode::Unauthorized
+    )]
+    pub dice_rolling: Account<'info, DiceRollingState>,
+
+    /// CHECK: Parsed and validated as Switchboard randomness state.
+    pub randomness_account_data: AccountInfo<'info>,
+
+    pub user: Signer<'info>,
 }
 
 #[account]
@@ -160,13 +195,13 @@ pub struct DiceRollingState {
     pub commit_slot: u64, // The slot at which the randomness was committed
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq, Eq)]
 pub struct DiceResult {
-    raw_result: u8,
-    bonus: u8,
-    success: bool,
-    critical_success: bool,
-    critical_failure: bool,
+    pub raw_result: u8,
+    pub bonus: u8,
+    pub success: bool,
+    pub critical_success: bool,
+    pub critical_failure: bool,
 }
 
 #[error_code]
@@ -187,4 +222,10 @@ pub enum ErrorCode {
     RollingNotCommitted,
     #[msg("Success floor is too high")]
     SuccessFloorTooHigh,
+    #[msg("Invalid randomness account")]
+    InvalidRandomnessAccount,
+    #[msg("Invalid randomness seed slot")]
+    InvalidRandomnessSeedSlot,
 }
+
+
