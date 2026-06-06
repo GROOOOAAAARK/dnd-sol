@@ -20,19 +20,16 @@ pub mod dice_rolling {
         Ok(())
     }
 
-    pub fn commit_roll(
+    pub fn roll_and_reveal(
         ctx: Context<CommitRoll>,
         dice_size: u8,
         success_floor: u8,
         bonus: u8,
-        randomness_account: Pubkey,
-    ) -> Result<bool> {
-        let rolling_committed =
-            DiceRollingState::roll(ctx, dice_size, success_floor, bonus, randomness_account)?;
-        Ok(rolling_committed)
-    }
-
-    pub fn settle_roll(ctx: Context<SettleRoll>) -> Result<DiceResult> {
+    ) -> Result<DiceResult> {
+        let rolling_committed = DiceRollingState::roll(ctx, dice_size, success_floor, bonus, randomness_account)?;
+        if !rolling_committed {
+            return Err(ErrorCode::RollingNotCommitted.into());
+        }
         let dice_result = DiceRollingState::settle(ctx)?;
         Ok(dice_result)
     }
@@ -48,7 +45,7 @@ impl DiceRollingState {
     1; // bump
 
     fn roll(
-        ctx: Context<CommitRoll>,
+        ctx: Context<DiceRoll>,
         dice_size: u8,
         success_floor: u8,
         bonus: u8,
@@ -78,7 +75,7 @@ impl DiceRollingState {
         Ok(true)
     }
 
-    fn settle(ctx: Context<SettleRoll>) -> Result<DiceResult> {
+    fn settle(ctx: Context<DiceRoll>) -> Result<DiceResult> {
         let clock = Clock::get()?;
         let dice_rolling = &mut ctx.accounts.dice_rolling;
 
@@ -132,19 +129,7 @@ pub struct Initialize<'info> {
 }
 
 #[derive(Accounts)]
-pub struct CommitRoll<'info> {
-    #[account(mut, seeds = [b"dice_rolling".as_ref(), user.key().as_ref()], bump = dice_rolling.bump)]
-    pub dice_rolling: Account<'info, DiceRollingState>,
-
-    /// CHECK: This is a placeholder for the randomness account data
-    pub randomness_account_data: AccountInfo<'info>,
-
-    pub user: Signer<'info>,
-    pub system_program: Program<'info, System>,
-}
-
-#[derive(Accounts)]
-pub struct SettleRoll<'info> {
+pub struct DiceRoll<'info> {
     #[account(mut, seeds = [b"dice_rolling".as_ref(), user.key().as_ref()], bump = dice_rolling.bump)]
     pub dice_rolling: Account<'info, DiceRollingState>,
 
@@ -191,6 +176,8 @@ pub enum ErrorCode {
     RandomnessAlreadyRevealed,
     #[msg("Dice size is too low")]
     DiceSizeTooLow,
-    // #[msg("Success floor is too high")]
-    // SuccessFloorTooHigh,
+    #[msg("Rolling not committed")]
+    RollingNotCommitted,
+    #[msg("Success floor is too high")]
+    SuccessFloorTooHigh,
 }
