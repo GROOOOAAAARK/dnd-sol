@@ -228,4 +228,43 @@ pub enum ErrorCode {
     InvalidRandomnessSeedSlot,
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
 
+    #[test]
+    fn dice_result_is_one_based_and_marks_critical_failure() {
+        let result = DiceRollingState::_build_dice_result(0, 0, 20, 20).unwrap();
+
+        assert_eq!(result.raw_result, 1);
+        assert!(!result.success);
+        assert!(result.critical_failure);
+        assert!(!result.critical_success);
+    }
+
+    #[test]
+    fn dice_result_marks_max_roll_as_critical_success() {
+        let result = DiceRollingState::_build_dice_result(19, 0, 20, 20).unwrap();
+
+        assert_eq!(result.raw_result, 20);
+        assert!(result.success);
+        assert!(result.critical_success);
+        assert!(!result.critical_failure);
+    }
+
+    #[test]
+    fn dice_result_applies_bonus_to_success_check() {
+        let result = DiceRollingState::_build_dice_result(12, 2, 15, 20).unwrap();
+
+        assert_eq!(result.raw_result, 13);
+        assert!(result.success);
+    }
+
+    #[test]
+    fn dice_state_deserializes_from_zeroed_init_space() {
+        let data = vec![0u8; DiceRollingState::SPACE];
+        let mut slice = data.as_slice();
+
+        assert!(DiceRollingState::try_deserialize_unchecked(&mut slice).is_ok());
+    }
+}
