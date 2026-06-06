@@ -1,6 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::{instruction::Instruction, program::invoke};
-use anchor_lang::{AnchorDeserialize, AnchorSerialize, ToAccountInfo};
+use anchor_lang::{AnchorDeserialize, AnchorSerialize};
 
 declare_id!("5XQUKVykhN5D3WkJ1MdsRxaJDmEszjRzhje3e6TjF4Wd");
 
@@ -38,7 +37,7 @@ pub mod dnd_sol {
             wisdom,
             charisma,
         )
-        .unwrap();
+        ?;
         msg!("Character created: {:?}", character.attributes.name);
         Ok(())
     }
@@ -48,74 +47,32 @@ pub mod dnd_sol {
         dice_size: u8,
         success_floor: u8,
         bonus: u8,
-    ) -> Result<()> {
-        let dice_rolling_program = dice_rolling::id();
-        let account_meta = vec![
-            AccountMeta::new(dice_rolling_program, false),
-            AccountMeta::new(ctx.accounts.player.key(), false),
-            AccountMeta::new(ctx.accounts.player.key(), false),
-            AccountMeta::new(ctx.accounts.system_program.key(), false),
-        ];
-
-        //INFO: dice_rolling.commit_roll function discriminator
-        let instruction_discriminator: [u8; 8] = [225, 122, 182, 84, 21, 244, 202, 153];
-
-        let mut instruction_data = Vec::with_capacity(2 + 8 + 8 + 8 + 32);
-        instruction_data.extend_from_slice(&instruction_discriminator);
-        instruction_data.extend_from_slice(&dice_size.to_le_bytes());
-        instruction_data.extend_from_slice(&success_floor.to_le_bytes());
-        instruction_data.extend_from_slice(&bonus.to_le_bytes());
-        instruction_data.extend_from_slice(&ctx.accounts.player.key().to_bytes());
-
-        let instruction = Instruction {
-            program_id: dice_rolling_program,
-            accounts: account_meta,
-            data: instruction_data,
+    ) -> Result<bool> {
+        let cpi_program = ctx.accounts.dice_rolling_program.to_account_info();
+        let cpi_accounts = dice_rolling::cpi::accounts::DiceRoll {
+            dice_rolling: ctx.accounts.dice_rolling_state.to_account_info(),
+            randomness_account_data: ctx.accounts.randomness_account_data.to_account_info(),
+            user: ctx.accounts.player.to_account_info(),
         };
 
-        let dice_rolled = invoke(
-            &instruction,
-            &[
-                ctx.accounts.character.to_account_info(),
-                ctx.accounts.player.to_account_info(),
-                ctx.accounts.system_program.to_account_info(),
-            ],
+        let action_committed =dice_rolling::cpi::commit_roll(
+            CpiContext::new(cpi_program, cpi_accounts),
+            dice_size,
+            success_floor,
+            bonus,
         )?;
-
-        Ok(dice_rolled)
+        Ok(action_committed.get())
     }
 
-    pub fn reveal_action_result(ctx: Context<CharacterScope>) -> Result<()> {
-        let dice_rolling_program = dice_rolling::id();
-        let account_meta = vec![
-            AccountMeta::new(dice_rolling_program, false),
-            AccountMeta::new(ctx.accounts.player.key(), false),
-            AccountMeta::new(ctx.accounts.player.key(), false),
-            AccountMeta::new(ctx.accounts.system_program.key(), false),
-        ];
-
-        //INFO: dice_rolling.settle_roll function discriminator
-        let instruction_discriminator: [u8; 8] = [71, 48, 214, 3, 61, 20, 126, 255];
-
-        let mut instruction_data: Vec<u8> = Vec::with_capacity(2 + 8);
-        instruction_data.extend_from_slice(&instruction_discriminator);
-
-        let instruction = Instruction {
-            program_id: dice_rolling_program,
-            accounts: account_meta,
-            data: instruction_data,
+    pub fn reveal_action_result(ctx: Context<CharacterScope>) -> Result<dice_rolling::DiceResult> {
+        let cpi_program = ctx.accounts.dice_rolling_program.to_account_info();
+        let cpi_accounts = dice_rolling::cpi::accounts::DiceRoll {
+            dice_rolling: ctx.accounts.dice_rolling_state.to_account_info(),
+            randomness_account_data: ctx.accounts.randomness_account_data.to_account_info(),
+            user: ctx.accounts.player.to_account_info(),
         };
 
-        let rolling_result = invoke(
-            &instruction,
-            &[
-                ctx.accounts.character.to_account_info(),
-                ctx.accounts.player.to_account_info(),
-                ctx.accounts.system_program.to_account_info(),
-            ],
-        )?;
-
-        Ok(rolling_result)
+        dice_rolling::cpi::reveal_roll(CpiContext::new(cpi_program, cpi_accounts)).map(|result| result.get())
     }
 }
 
@@ -136,9 +93,10 @@ pub struct CreateCharacter<'info> {
     #[account(
         init,
         payer=player,
-        space = 8+Character::SPACE,
+        space = 8 + CharacterAccount::SPACE,
         seeds = [b"character", player.key().as_ref(), name.as_bytes()],
-        bump
+        bump,
+        constraint = name.as_bytes().len() <= CharacterAttributes::MAX_NAME_LEN @ ErrorCode::NameTooLong
     )]
     pub character: Account<'info, CharacterAccount>,
 
@@ -153,7 +111,15 @@ pub struct CharacterScope<'info> {
     #[account(mut, has_one = player)]
     pub character: Account<'info, CharacterAccount>,
 
-    pub system_program: Program<'info, System>,
+    /// CHECK: Checked by the dice_rolling program
+    #[account(mut)]
+    pub dice_rolling_state: UncheckedAccount<'info>,
+
+    /// CHECK: Checked by the dice_rolling program
+    /// This is the Switchboard Randomness Account
+    pub randomness_account_data: UncheckedAccount<'info>,
+
+    pub dice_rolling_program: Program<'info, dice_rolling::program::DiceRolling>,
 }
 
 #[account]
@@ -161,6 +127,10 @@ pub struct CharacterScope<'info> {
 pub struct CharacterAccount {
     pub character: Character,
     pub player: Pubkey,
+}
+
+impl CharacterAccount {
+    pub const SPACE: usize = Character::SPACE + 32;
 }
 
 #[account]
@@ -178,6 +148,11 @@ pub struct CharacterAttributes {
     pub level: u8,
     pub experience: u32,
     pub race: CharacterRace,
+}
+
+impl CharacterAttributes {
+    pub const MAX_NAME_LEN: usize = 32;
+    pub const SPACE: usize = 4 + Self::MAX_NAME_LEN + 1 + 1 + 4 + 1;
 }
 
 #[derive(Clone, Default, AnchorSerialize, AnchorDeserialize)]
@@ -243,20 +218,12 @@ pub struct CharacterStats {
     pub max_health: u16,
 }
 
+impl CharacterStats {
+    pub const SPACE: usize = 1 + 1 + 1 + 1 + 1 + 1 + 2 + 2;
+}
+
 impl Character {
-    pub const SPACE: usize = 32 + // pubkey
-                             50 + // name (variable, estimated)
-                             20 + // class (variable, estimated)
-                             1 +  // level
-                             4 +  // experience
-                             1 +  // strength
-                             1 +  // dexterity
-                             1 +  // constitution
-                             1 +  // intelligence
-                             1 +  // wisdom
-                             1 +  // charisma
-                             2 +  // health
-                             2; // max_health
+    pub const SPACE: usize = CharacterAttributes::SPACE + CharacterStats::SPACE;
 
     pub fn create(
         character_account: &mut Account<CharacterAccount>,
@@ -271,6 +238,9 @@ impl Character {
         wisdom: u8,
         charisma: u8,
     ) -> Result<Character> {
+        if name.as_bytes().len() > CharacterAttributes::MAX_NAME_LEN {
+            return Err(ErrorCode::NameTooLong.into());
+        }
 
         let mut character = Character::default();
 
@@ -330,4 +300,6 @@ pub enum ErrorCode {
     StatsTooLow,
     #[msg("Character creation is not fair")]
     CharacterCreationNotFair,
+    #[msg("Character name is too long")]
+    NameTooLong,
 }
