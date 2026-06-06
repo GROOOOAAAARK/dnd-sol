@@ -1,49 +1,127 @@
 "use client"
 
-import { BorshAccountsCoder, Program, AnchorProvider } from "@coral-xyz/anchor"
-import { Keypair, PublicKey, SystemProgram } from "@solana/web3.js"
+import { BorshAccountsCoder, Program } from "@coral-xyz/anchor"
+import { PublicKey, SystemProgram, Transaction } from "@solana/web3.js"
 import type { Character, DiceResult } from "@/models/types"
-import DndSolIDL from "@/idl/dnd_sol.json";
-import { useConnection, useAnchorWallet } from "@solana/wallet-adapter-react"
+import DndSolIDL from "@/idl/dnd_sol.json"
+import DiceRollIDL from "@/idl/dice_rolling.json"
+import { useAnchorWallet } from "@solana/wallet-adapter-react"
 import { useCharacterStore } from "@/stores/selectedCharacter.store"
+import { useAnchorProvider } from "@/hooks/useAnchorProvider"
+import { useConnection } from "@solana/wallet-adapter-react"
 import { useMemo } from "react"
+import * as switchboard from "@switchboard-xyz/on-demand"
+import { CrossbarClient } from "@switchboard-xyz/common"
+
+const randomnessStorageKey = (characterId: string) => `dnd-randomness:${characterId}`
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 export function useSolanaService() {
   const { connection } = useConnection()
-  const wallet = useAnchorWallet();
+  const wallet = useAnchorWallet()
+  const provider = useAnchorProvider()
   const { selectedCharacter } = useCharacterStore()
   const dndSolProgramId = new PublicKey(process.env.NEXT_PUBLIC_DND_PROGRAM_ADDRESS!)
+  const diceRollingProgramId = new PublicKey(process.env.NEXT_PUBLIC_DICE_ROLLING_PROGRAM_ADDRESS!)
 
-  // Create provider and program only when wallet is available
   const program = useMemo(() => {
-    if (!wallet) return null
-    const provider = new AnchorProvider(connection, wallet, AnchorProvider.defaultOptions())
-    return new Program(DndSolIDL, provider);
-  }, [connection, wallet]);
+    if (!provider) return null
+    return new Program(DndSolIDL as any, provider)
+  }, [provider])
 
   const diceRollProgram = useMemo(() => {
-    if (!wallet) return null;
-    const provider = new AnchorProvider(connection, wallet, AnchorProvider.defaultOptions())
-    return new Program(DiceRollIDL, provider);
-  }, [connection, wallet]);
+    if (!provider) return null
+    return new Program(DiceRollIDL as any, provider)
+  }, [provider])
 
-  const isLocalnet = process.env.NEXT_PUBLIC_SOLANA_CLUSTER === "localnet";
+  const getDiceRollingStatePda = () => {
+    if (!wallet) {
+      throw new Error("Wallet not connected")
+    }
+    return PublicKey.findProgramAddressSync(
+      [Buffer.from("dice_rolling"), wallet.publicKey.toBuffer()],
+      diceRollingProgramId,
+    )[0]
+  }
+
+  const ensureDiceRollingState = async () => {
+    if (!wallet || !diceRollProgram) {
+      throw new Error("Wallet not connected")
+    }
+
+    const diceRollingStatePda = getDiceRollingStatePda()
+    const existing = await connection.getAccountInfo(diceRollingStatePda)
+    if (existing) {
+      return diceRollingStatePda
+    }
+
+    await diceRollProgram.methods
+      .initialize()
+      .accounts({
+        diceRolling: diceRollingStatePda,
+        user: wallet.publicKey,
+        systemProgram: SystemProgram.programId,
+      })
+      .rpc()
+
+    return diceRollingStatePda
+  }
+
+  const getSwitchboardContext = async () => {
+    if (!provider) {
+      throw new Error("Wallet not connected")
+    }
+
+    let switchboardProgramId: PublicKey
+    let queue: PublicKey
+    let crossbarUrl: string | undefined
+
+    switchboardProgramId = process.env.NEXT_PUBLIC_SWITCHBOARD_PROGRAM_ADDRESS
+      ? new PublicKey(process.env.NEXT_PUBLIC_SWITCHBOARD_PROGRAM_ADDRESS)
+      : await switchboard.getProgramId(connection)
+    queue = process.env.NEXT_PUBLIC_SWITCHBOARD_QUEUE_ADDRESS
+      ? new PublicKey(process.env.NEXT_PUBLIC_SWITCHBOARD_QUEUE_ADDRESS)
+      : switchboard.ON_DEMAND_DEVNET_QUEUE
+    crossbarUrl = process.env.NEXT_PUBLIC_SWITCHBOARD_CROSSBAR_URL
+
+    const switchboardProgram = await switchboard.AnchorUtils.loadProgramFromProvider(
+      provider,
+      switchboardProgramId,
+    )
+
+    return {
+      Randomness: switchboard.Randomness,
+      queue,
+      switchboardProgram,
+      crossbarClient: crossbarUrl ? new CrossbarClient(crossbarUrl) : CrossbarClient.default(),
+    }
+  }
+
+  const persistRandomnessAccount = (characterId: string, randomnessAccount: string) => {
+    sessionStorage.setItem(randomnessStorageKey(characterId), randomnessAccount)
+  }
+
+  const readRandomnessAccount = (characterId: string): string | null => {
+    return sessionStorage.getItem(randomnessStorageKey(characterId))
+  }
+
+  const clearRandomnessAccount = (characterId: string) => {
+    sessionStorage.removeItem(randomnessStorageKey(characterId))
+  }
 
   const createCharacter = async (character: Character): Promise<void> => {
     if (!wallet || !program) {
       throw new Error("Wallet not connected")
     }
-    try {
-      const [characterAccountPda] = PublicKey.findProgramAddressSync(
-        [
-          Buffer.from("character"),
-          wallet.publicKey.toBuffer(),
-          Buffer.from(character.name),
-        ], // must match seeds in Solana program
-        dndSolProgramId,
-      );
 
-      await program.methods.createCharacter(
+    const [characterAccountPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("character"), wallet.publicKey.toBuffer(), Buffer.from(character.name)],
+      dndSolProgramId,
+    )
+
+    await program.methods
+      .createCharacter(
         character.name,
         character.character_class,
         character.race,
@@ -52,144 +130,178 @@ export function useSolanaService() {
         character.stats.constitution,
         character.stats.intelligence,
         character.stats.wisdom,
-        character.stats.charisma
-      ).accounts({
+        character.stats.charisma,
+      )
+      .accounts({
         player: wallet.publicKey,
         character: characterAccountPda,
         systemProgram: SystemProgram.programId,
-      }).rpc();
-    } catch (error) {
-      console.error("Failed to create character:", error)
-      throw error
-    }
+      })
+      .rpc()
   }
 
   const getCharacters = async (): Promise<Character[]> => {
     if (!wallet || !program) {
       throw new Error("Wallet not connected")
     }
-    try {
 
-      // Create a coder to decode the account data
-      const coder = new BorshAccountsCoder(DndSolIDL as any)
+    const coder = new BorshAccountsCoder(DndSolIDL as any)
+    const accountsResponse = await connection.getProgramAccounts(dndSolProgramId, {
+      commitment: "confirmed",
+    })
 
-      // Get all program accounts (this will return raw data for custom programs)
-      const accountsResponse = await connection.getProgramAccounts(
-        dndSolProgramId,
-        {
-          commitment: "confirmed",
-        },
-      )
+    const decodedCharacters = accountsResponse.map((accountInfo) => {
+      try {
+        const decoded = coder.decode("CharacterAccount", accountInfo.account.data)
+        const player = decoded.player.toBase58()
 
-      // Decode each account
-      const decodedCharacters = accountsResponse.map((accountInfo) => {
-        try {
-          // The account data is in accountInfo.account.data (Buffer)
-          const decoded = coder.decode("CharacterAccount", accountInfo.account.data)
-
-          const player = decoded.player.toBase58()
-
-          if (player !== wallet?.publicKey?.toBase58()) {
-            return null
-          }
-
-          // Helper function to extract enum variant name
-          const getEnumVariant = (enumObj: any): string => {
-            if (typeof enumObj === 'string') return enumObj
-            if (typeof enumObj === 'object' && enumObj !== null) {
-              const keys = Object.keys(enumObj)
-              return keys[0] || ''
-            }
-            return String(enumObj)
-          }
-
-          // Parse the decoded data into your Character format
-          const character: Character = {
-            id: accountInfo.pubkey.toString(),
-            name: String(decoded.character.attributes.name),
-            race: getEnumVariant(decoded.character.attributes.race),
-            character_class: getEnumVariant(decoded.character.attributes.class),
-            level: Number(decoded.character.attributes.level),
-            experience: Number(decoded.character.attributes.experience),
-            stats: {
-              strength: Number(decoded.character.stats.strength),
-              dexterity: Number(decoded.character.stats.dexterity),
-              constitution: Number(decoded.character.stats.constitution),
-              intelligence: Number(decoded.character.stats.intelligence),
-              wisdom: Number(decoded.character.stats.wisdom),
-              charisma: Number(decoded.character.stats.charisma),
-            },
-          }
-
-          return character
-        } catch (decodeError) {
-          console.error("Failed to decode account:", decodeError)
+        if (player !== wallet.publicKey.toBase58()) {
           return null
         }
-      })
 
-      const validCharacters = decodedCharacters.filter((character): character is Character => character !== null)
-      return validCharacters
-    } catch (error) {
-      console.error("Failed to fetch characters from blockchain:", error)
-      return []
-    }
+        const getEnumVariant = (enumObj: any): string => {
+          if (typeof enumObj === "string") return enumObj
+          if (typeof enumObj === "object" && enumObj !== null) {
+            const keys = Object.keys(enumObj)
+            return keys[0] || ""
+          }
+          return String(enumObj)
+        }
+
+        const character: Character = {
+          id: accountInfo.pubkey.toString(),
+          name: String(decoded.character.attributes.name),
+          race: getEnumVariant(decoded.character.attributes.race),
+          character_class: getEnumVariant(decoded.character.attributes.class),
+          level: Number(decoded.character.attributes.level),
+          experience: Number(decoded.character.attributes.experience),
+          stats: {
+            strength: Number(decoded.character.stats.strength),
+            dexterity: Number(decoded.character.stats.dexterity),
+            constitution: Number(decoded.character.stats.constitution),
+            intelligence: Number(decoded.character.stats.intelligence),
+            wisdom: Number(decoded.character.stats.wisdom),
+            charisma: Number(decoded.character.stats.charisma),
+          },
+        }
+
+        return character
+      } catch (decodeError) {
+        console.error("Failed to decode account:", decodeError)
+        return null
+      }
+    })
+
+    return decodedCharacters.filter((character): character is Character => character !== null)
   }
 
   const doAction = async (diceSize: number, successFloor: number, bonus: number): Promise<void> => {
-    if (!wallet || !program) {
+    if (!wallet || !program || !provider) {
       throw new Error("Wallet not connected")
     }
-    try {
-      if (!selectedCharacter) {
-        throw new Error("No selected character")
-      }
-      await program.methods.doAction(diceSize, successFloor, bonus).accounts({
-        character: new PublicKey(selectedCharacter.id!),
-        player: wallet.publicKey,
-        systemProgram: SystemProgram.programId,
-      })
-      .rpc();
-    } catch (error) {
-      console.error("Failed to do action:", error)
+    if (!selectedCharacter?.id) {
+      throw new Error("No selected character")
     }
+
+    const { Randomness, queue, switchboardProgram } = await getSwitchboardContext()
+    const diceRollingStatePda = await ensureDiceRollingState()
+    const [randomness, randomnessKeypair, randomnessIxs] = await Randomness.createAndCommitIxs(
+      switchboardProgram,
+      queue,
+      wallet.publicKey,
+    )
+
+    const actionIx = await program.methods
+      .doAction(diceSize, successFloor, bonus)
+      .accounts({
+        player: wallet.publicKey,
+        character: new PublicKey(selectedCharacter.id),
+        diceRollingState: diceRollingStatePda,
+        randomnessAccountData: randomness.pubkey,
+        diceRollingProgram: diceRollingProgramId,
+      })
+      .instruction()
+
+    await provider.sendAndConfirm(
+      new Transaction().add(...randomnessIxs, actionIx),
+      [randomnessKeypair],
+    )
+
+    persistRandomnessAccount(selectedCharacter.id, randomness.pubkey.toBase58())
   }
 
-  const revealActionResult = async (diceSize: number, successFloor: number, bonus: number): Promise<DiceResult> => {
-    if (!wallet || !program) {
+  const revealActionResult = async (): Promise<DiceResult> => {
+    if (!wallet || !program || !diceRollProgram || !provider) {
       throw new Error("Wallet not connected")
     }
-    try {
-      if (!selectedCharacter) {
-        throw new Error("No selected character")
-      }
-      const characterPk = new PublicKey(selectedCharacter.id!)
-      const coder = new BorshAccountsCoder(DndSolIDL as any)
-
-      const result = await program.methods.revealActionResult().accounts({
-        character: characterPk,
-        player: wallet.publicKey,
-        systemProgram: SystemProgram.programId,
-      }).args([diceSize, successFloor, bonus])
-
-      const decoded = coder.decode("DiceResult", result.data);
-
-      return {
-        raw_result: decoded.raw_result,
-        bonus: decoded.bonus,
-        success: decoded.success,
-        critical_success: decoded.critical_success,
-        critical_failure: decoded.critical_failure,
-      }
-    } catch (error) {
-      throw error
+    if (!selectedCharacter?.id) {
+      throw new Error("No selected character")
     }
+
+    const randomnessAccount = readRandomnessAccount(selectedCharacter.id)
+    if (!randomnessAccount) {
+      throw new Error("No pending randomness account for selected character")
+    }
+
+    const { Randomness, switchboardProgram } = await getSwitchboardContext()
+    const randomness = new Randomness(switchboardProgram, new PublicKey(randomnessAccount))
+    const diceRollingStatePda = getDiceRollingStatePda()
+    const characterPk = new PublicKey(selectedCharacter.id)
+
+    const revealActionIx = await program.methods.revealActionResult().accounts({
+      character: characterPk,
+      player: wallet.publicKey,
+      diceRollingState: diceRollingStatePda,
+      randomnessAccountData: randomness.pubkey,
+      diceRollingProgram: diceRollingProgramId,
+    }).instruction()
+
+    let lastError: unknown
+    for (let attempt = 1; attempt <= 5; attempt++) {
+      try {
+        const revealRandomnessIx = await randomness.revealIx(wallet.publicKey)
+        await provider.sendAndConfirm(
+          new Transaction().add(revealRandomnessIx, revealActionIx),
+          [],
+        )
+
+        const diceState = await (diceRollProgram as any).account.diceRollingState.fetch(diceRollingStatePda)
+        clearRandomnessAccount(selectedCharacter.id)
+
+        const rawResult = Number(diceState.latestRollResult)
+        const bonus = Number(diceState.bonus)
+        const successFloor = Number(diceState.successFloor)
+        const diceSize = Number(diceState.diceSize)
+
+        return {
+          raw_result: rawResult,
+          bonus,
+          success: rawResult + bonus >= successFloor,
+          critical_success: rawResult === diceSize,
+          critical_failure: rawResult === 1,
+        }
+      } catch (error) {
+        lastError = error
+        await sleep(1500)
+      }
+    }
+
+    throw lastError
+  }
+
+  const performDiceAction = async (
+    diceSize: number,
+    successFloor: number,
+    bonus: number,
+  ): Promise<DiceResult> => {
+    await doAction(diceSize, successFloor, bonus)
+    await sleep(1500)
+    return revealActionResult()
   }
 
   return {
     createCharacter,
     getCharacters,
-    doAction,
-    revealActionResult,
+    performDiceAction,
   }
 }
