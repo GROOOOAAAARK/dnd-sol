@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  crossbar:
+    image: switchboardlabs/rust-crossbar:stable
+    ports:
+      - "8080:8080"  # HTTP API
+      - "8081:8081"  # WebSocket
+    environment:
+      # === Core Configuration ===
+      PORT: ${PORT:-8080}
+      WS_PORT: ${WS_PORT:-8081}
+
+      # === Blockchain RPCs (Optional - Recommended) ===
+      SOLANA_MAINNET_RPC_URL: ${SOLANA_MAINNET_RPC_URL:-"https://api.mainnet-beta.solana.com"}
+      SOLANA_DEVNET_RPC_URL: ${SOLANA_DEVNET_RPC_URL:-"http://host.docker.internal:8899"}
+
+      # # === IPFS Configuration (Optional) ===
+      IPFS_GATEWAY_URL: ${IPFS_GATEWAY_URL:-"https://ipfs.io"}
+      PINATA_JWT_KEY: ${PINATA_JWT_KEY}
+      PINATA_GATEWAY_KEY: ${PINATA_GATEWAY_KEY}
+
+      # === Performance (Optional) ===
+      BROADCAST_WORKER_THREADS: ${BROADCAST_WORKER_THREADS:-2}
+      RUST_LOG: ${RUST_LOG:-"info"}
