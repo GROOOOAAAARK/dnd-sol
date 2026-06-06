@@ -98,24 +98,31 @@ impl DiceRollingState {
 
         let modulated_random_value: u8 = revealed_random_value[0] % dice_rolling.dice_size;
 
-        let critical_success = modulated_random_value == dice_rolling.dice_size;
-        let critical_failure = modulated_random_value == 0;
-
-        let success = modulated_random_value + dice_rolling.bonus >= dice_rolling.success_floor
-            && !critical_failure;
-
-        let dice_result = DiceResult {
-            raw_result: modulated_random_value,
-            bonus: dice_rolling.bonus,
-            success,
-            critical_success,
-            critical_failure,
-        };
+        let dice_result = Self::_build_dice_result(modulated_random_value, dice_rolling.bonus, dice_rolling.success_floor, dice_rolling.dice_size)?;
 
         // Update and log the result
         dice_rolling.latest_roll_result = modulated_random_value;
 
         Ok(dice_result)
+    }
+
+    fn _build_dice_result(
+        raw_value: u8,
+        bonus: u8,
+        success_floor: u8,
+        dice_size: u8,
+    ) -> Result<DiceResult> {
+        let success = raw_value + bonus >= success_floor;
+        let critical_success = raw_value == dice_size;
+        let critical_failure = raw_value == 0;
+
+        Ok(DiceResult {
+            raw_result: raw_value,
+            bonus,
+            success,
+            critical_success,
+            critical_failure,
+        })
     }
 }
 
