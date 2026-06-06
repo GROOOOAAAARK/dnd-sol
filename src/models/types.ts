@@ -54,6 +54,7 @@ export interface GameAction {
   description: string;
   success_next_step_id?: string;
   failure_next_step_id?: string;
+  default_next_step_id?: string;
   requirements?: {
     stats?: Partial<CharacterStats>;
     items?: string[];
