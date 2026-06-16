@@ -4,7 +4,7 @@ crossbar-up:
 	SOLANA_DEVNET_RPC_URL=http://host.docker.internal:8899 docker compose -f docker/switchboard-crossbar.yml up
 
 localnet:
-	anchor build && anchor localnet --validator legacy
+	anchor localnet -- --features localnet-mock
 
 localnet-deploy:
 	anchor deploy -u localhost
