@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+#[cfg(not(feature = "localnet-mock"))]
 use switchboard_on_demand::RandomnessAccountData;
 
 declare_id!("LTwGJmVKw2FkgByX2JehTkS2AqddnniuA2jyV4zZzwv");
@@ -64,63 +65,105 @@ impl DiceRollingState {
             return Err(ErrorCode::SuccessFloorTooHigh.into());
         }
 
-        let clock: Clock = Clock::get()?;
-        let randomness_data =
-            RandomnessAccountData::parse(ctx.accounts.randomness_account_data.data.borrow())
-                .map_err(|_| ErrorCode::InvalidRandomnessAccount)?;
-        let expected_seed_slot = clock
-            .slot
-            .checked_sub(1)
-            .ok_or(ErrorCode::InvalidRandomnessSeedSlot)?;
-        if randomness_data.seed_slot != expected_seed_slot {
-            msg!("seed_slot: {}", randomness_data.seed_slot);
-            msg!("slot: {}", clock.slot);
-            return Err(ErrorCode::InvalidRandomnessSeedSlot.into());
+        #[cfg(not(feature = "localnet-mock"))]
+        {
+            let clock: Clock = Clock::get()?;
+            let randomness_data =
+                RandomnessAccountData::parse(ctx.accounts.randomness_account_data.data.borrow())
+                    .map_err(|_| ErrorCode::InvalidRandomnessAccount)?;
+            let expected_seed_slot = clock
+                .slot
+                .checked_sub(1)
+                .ok_or(ErrorCode::InvalidRandomnessSeedSlot)?;
+            if randomness_data.seed_slot != expected_seed_slot {
+                msg!("seed_slot: {}", randomness_data.seed_slot);
+                msg!("slot: {}", clock.slot);
+                return Err(ErrorCode::InvalidRandomnessSeedSlot.into());
+            }
+
+            dice_rolling.randomness_account = ctx.accounts.randomness_account_data.key();
+            dice_rolling.commit_slot = randomness_data.seed_slot;
+            dice_rolling.dice_size = dice_size;
+            dice_rolling.success_floor = success_floor;
+            dice_rolling.bonus = bonus;
+            dice_rolling.latest_roll_result = 0;
+            Ok(true)
         }
 
-        dice_rolling.randomness_account = ctx.accounts.randomness_account_data.key();
-        dice_rolling.commit_slot = randomness_data.seed_slot;
-        dice_rolling.dice_size = dice_size;
-        dice_rolling.success_floor = success_floor;
-        dice_rolling.bonus = bonus;
-        dice_rolling.latest_roll_result = 0;
-        Ok(true)
+        #[cfg(feature = "localnet-mock")]
+        {
+            let clock: Clock = Clock::get()?;
+            dice_rolling.commit_slot = clock.slot;
+            dice_rolling.dice_size = dice_size;
+            dice_rolling.success_floor = success_floor;
+            dice_rolling.bonus = bonus;
+            dice_rolling.latest_roll_result = 0;
+            Ok(true)
+        }
     }
 
     fn reveal(ctx: Context<DiceRoll>) -> Result<DiceResult> {
         let clock = Clock::get()?;
         let dice_rolling = &mut ctx.accounts.dice_rolling;
 
-        if ctx.accounts.randomness_account_data.key() != dice_rolling.randomness_account {
-            return Err(ErrorCode::RandomnessAccountMismatch.into());
-        }
+        #[cfg(not(feature = "localnet-mock"))]
+        {
+            if ctx.accounts.randomness_account_data.key() != dice_rolling.randomness_account {
+                return Err(ErrorCode::RandomnessAccountMismatch.into());
+            }
 
-        let randomness_data =
-        RandomnessAccountData::parse(ctx.accounts.randomness_account_data.data.borrow())
-            .map_err(|_| ErrorCode::InvalidRandomnessAccount)?;
+            let randomness_data =
+                RandomnessAccountData::parse(ctx.accounts.randomness_account_data.data.borrow())
+                    .map_err(|_| ErrorCode::InvalidRandomnessAccount)?;
 
-        if randomness_data.seed_slot != dice_rolling.commit_slot {
+            if randomness_data.seed_slot != dice_rolling.commit_slot {
                 return Err(ErrorCode::RandomnessExpired.into());
             }
 
-        // call the switchboard on-demand get_value function to get the revealed random value
-        let revealed_random_value = randomness_data
-        .get_value(&clock)
-        .map_err(|_| ErrorCode::RandomnessNotResolved)?;
+            let revealed_random_value = randomness_data
+                .get_value(&clock)
+                .map_err(|_| ErrorCode::RandomnessNotResolved)?;
 
-        let modulated_random_value = revealed_random_value[0] % dice_rolling.dice_size + 1;
+            let modulated_random_value = revealed_random_value[0] % dice_rolling.dice_size + 1;
 
-        let dice_result = Self::_build_dice_result(
-            modulated_random_value,
-            dice_rolling.bonus,
-            dice_rolling.success_floor,
-            dice_rolling.dice_size,
-        )?;
+            let dice_result = Self::_build_dice_result(
+                modulated_random_value,
+                dice_rolling.bonus,
+                dice_rolling.success_floor,
+                dice_rolling.dice_size,
+            )?;
 
-        // Update and log the result
-        dice_rolling.latest_roll_result = modulated_random_value;
+            dice_rolling.latest_roll_result = modulated_random_value;
 
-        Ok(dice_result)
+            Ok(dice_result)
+        }
+
+        #[cfg(feature = "localnet-mock")]
+        {
+            if dice_rolling.commit_slot == 0 {
+                return Err(ErrorCode::RollingNotCommitted.into());
+            }
+
+            let mut hash_input = Vec::with_capacity(8 + 8 + 8 + 32);
+            hash_input.extend_from_slice(&dice_rolling.commit_slot.to_le_bytes());
+            hash_input.extend_from_slice(&clock.slot.to_le_bytes());
+            hash_input.extend_from_slice(&clock.unix_timestamp.to_le_bytes());
+            hash_input.extend_from_slice(dice_rolling.key().as_ref());
+
+            let hash = anchor_lang::solana_program::keccak::hash(&hash_input);
+            let modulated_random_value = hash.0[0] % dice_rolling.dice_size + 1;
+
+            let dice_result = Self::_build_dice_result(
+                modulated_random_value,
+                dice_rolling.bonus,
+                dice_rolling.success_floor,
+                dice_rolling.dice_size,
+            )?;
+
+            dice_rolling.latest_roll_result = modulated_random_value;
+
+            Ok(dice_result)
+        }
     }
 
     fn _build_dice_result(
