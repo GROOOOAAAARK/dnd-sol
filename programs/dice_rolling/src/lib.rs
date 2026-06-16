@@ -39,13 +39,15 @@ pub mod dice_rolling {
 }
 
 impl DiceRollingState {
-    pub const SPACE: usize = 8 + // allowed_user
-    1 + // latest_roll_result
-    32 + // randomness_account
-    8 + // dice_size
-    8 + // success_floor
-    8 + // bonus
-    1; // bump
+    pub const SPACE: usize = 8 + // discriminator
+        32 + // allowed_user
+        1 + // latest_roll_result
+        32 + // randomness_account
+        1 + // dice_size
+        1 + // success_floor
+        1 + // bonus
+        1 + // bump
+        8; // commit_slot
 
     fn commit(
         ctx: Context<DiceRoll>,
