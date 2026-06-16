@@ -1,7 +1,7 @@
 "use client"
 
 import { BorshAccountsCoder, Program } from "@coral-xyz/anchor"
-import { PublicKey, SystemProgram, Transaction } from "@solana/web3.js"
+import { PublicKey, SystemProgram, SYSVAR_SLOT_HASHES_PUBKEY, Transaction } from "@solana/web3.js"
 import type { Character, DiceResult } from "@/models/types"
 import DndSolIDL from "@/idl/dnd_sol.json"
 import DiceRollIDL from "@/idl/dice_rolling.json"
@@ -11,9 +11,12 @@ import { useAnchorProvider } from "@/hooks/useAnchorProvider"
 import { useConnection } from "@solana/wallet-adapter-react"
 import { useMemo } from "react"
 import * as switchboard from "@switchboard-xyz/on-demand"
-import { CrossbarClient } from "@switchboard-xyz/common"
+import bs58 from "bs58"
 
 const randomnessStorageKey = (characterId: string) => `dnd-randomness:${characterId}`
+const REVEAL_RETRY_BACKOFF_MS = 1500
+const LOCALNET_RANDOMNESS_PLACEHOLDER = "localnet-mock"
+const isLocalnet = process.env.NEXT_PUBLIC_SOLANA_CLUSTER === "localnet"
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -75,7 +78,7 @@ export function useSolanaService() {
 
     let switchboardProgramId: PublicKey
     let queue: PublicKey
-    let crossbarUrl: string | undefined
+    let randomnessGatewayUrl: string | undefined
 
     switchboardProgramId = process.env.NEXT_PUBLIC_SWITCHBOARD_PROGRAM_ADDRESS
       ? new PublicKey(process.env.NEXT_PUBLIC_SWITCHBOARD_PROGRAM_ADDRESS)
@@ -83,7 +86,7 @@ export function useSolanaService() {
     queue = process.env.NEXT_PUBLIC_SWITCHBOARD_QUEUE_ADDRESS
       ? new PublicKey(process.env.NEXT_PUBLIC_SWITCHBOARD_QUEUE_ADDRESS)
       : switchboard.ON_DEMAND_DEVNET_QUEUE
-    crossbarUrl = process.env.NEXT_PUBLIC_SWITCHBOARD_CROSSBAR_URL
+    randomnessGatewayUrl = process.env.NEXT_PUBLIC_SWITCHBOARD_CROSSBAR_URL
 
     const switchboardProgram = await switchboard.AnchorUtils.loadProgramFromProvider(
       provider,
@@ -94,8 +97,59 @@ export function useSolanaService() {
       Randomness: switchboard.Randomness,
       queue,
       switchboardProgram,
-      crossbarClient: crossbarUrl ? new CrossbarClient(crossbarUrl) : CrossbarClient.default(),
+      randomnessGatewayUrl,
     }
+  }
+
+  const buildRevealRandomnessIx = async (
+    randomness: switchboard.Randomness,
+    payer: PublicKey,
+    randomnessGatewayUrl?: string,
+  ) => {
+    if (!randomnessGatewayUrl) {
+      return randomness.revealIx(payer)
+    }
+
+    const data = await randomness.loadData()
+    const gateway = new switchboard.Gateway(randomnessGatewayUrl)
+    const gatewayRevealResponse = await gateway.fetchRandomnessReveal({
+      randomnessAccount: randomness.pubkey,
+      slothash: bs58.encode(data.seedSlothash),
+      slot: data.seedSlot.toNumber(),
+      rpc: connection.rpcEndpoint,
+    })
+    const stats = PublicKey.findProgramAddressSync(
+      [Buffer.from("OracleRandomnessStats"), data.oracle.toBuffer()],
+      randomness.program.programId,
+    )[0]
+
+    return randomness.program.instruction.randomnessReveal(
+      {
+        signature: Buffer.from(gatewayRevealResponse.signature, "base64"),
+        recoveryId: gatewayRevealResponse.recovery_id,
+        value: gatewayRevealResponse.value,
+      },
+      {
+        accounts: {
+          randomness: randomness.pubkey,
+          oracle: data.oracle,
+          queue: data.queue,
+          stats,
+          authority: data.authority,
+          payer,
+          recentSlothashes: switchboard.SPL_SYSVAR_SLOT_HASHES_ID,
+          systemProgram: SystemProgram.programId,
+          rewardEscrow: switchboard.getAssociatedTokenAddressSync(
+            switchboard.SOL_NATIVE_MINT,
+            randomness.pubkey,
+          ),
+          tokenProgram: switchboard.SPL_TOKEN_PROGRAM_ID,
+          associatedTokenProgram: switchboard.SPL_ASSOCIATED_TOKEN_ACCOUNT_PROGRAM_ID,
+          wrappedSolMint: switchboard.SOL_NATIVE_MINT,
+          programState: switchboard.State.keyFromSeed(randomness.program),
+        },
+      },
+    )
   }
 
   const persistRandomnessAccount = (characterId: string, randomnessAccount: string) => {
@@ -203,8 +257,26 @@ export function useSolanaService() {
       throw new Error("No selected character")
     }
 
-    const { Randomness, queue, switchboardProgram } = await getSwitchboardContext()
     const diceRollingStatePda = await ensureDiceRollingState()
+
+    if (isLocalnet) {
+      const actionIx = await program.methods
+        .doAction(diceSize, successFloor, bonus)
+        .accounts({
+          player: wallet.publicKey,
+          character: new PublicKey(selectedCharacter.id),
+          diceRollingState: diceRollingStatePda,
+          randomnessAccountData: SYSVAR_SLOT_HASHES_PUBKEY,
+          diceRollingProgram: diceRollingProgramId,
+        })
+        .instruction()
+
+      await provider.sendAndConfirm(new Transaction().add(actionIx), [])
+      persistRandomnessAccount(selectedCharacter.id, LOCALNET_RANDOMNESS_PLACEHOLDER)
+      return
+    }
+
+    const { Randomness, queue, switchboardProgram } = await getSwitchboardContext()
     const [randomness, randomnessKeypair, randomnessIxs] = await Randomness.createAndCommitIxs(
       switchboardProgram,
       queue,
@@ -243,10 +315,39 @@ export function useSolanaService() {
       throw new Error("No pending randomness account for selected character")
     }
 
-    const { Randomness, switchboardProgram } = await getSwitchboardContext()
-    const randomness = new Randomness(switchboardProgram, new PublicKey(randomnessAccount))
     const diceRollingStatePda = getDiceRollingStatePda()
     const characterPk = new PublicKey(selectedCharacter.id)
+
+    if (isLocalnet) {
+      const revealActionIx = await program.methods.revealActionResult().accounts({
+        character: characterPk,
+        player: wallet.publicKey,
+        diceRollingState: diceRollingStatePda,
+        randomnessAccountData: SYSVAR_SLOT_HASHES_PUBKEY,
+        diceRollingProgram: diceRollingProgramId,
+      }).instruction()
+
+      await provider.sendAndConfirm(new Transaction().add(revealActionIx), [])
+
+      const diceState = await (diceRollProgram as any).account.diceRollingState.fetch(diceRollingStatePda)
+      clearRandomnessAccount(selectedCharacter.id)
+
+      const rawResult = Number(diceState.latestRollResult)
+      const bonus = Number(diceState.bonus)
+      const successFloor = Number(diceState.successFloor)
+      const diceSize = Number(diceState.diceSize)
+
+      return {
+        raw_result: rawResult,
+        bonus,
+        success: rawResult + bonus >= successFloor,
+        critical_success: rawResult === diceSize,
+        critical_failure: rawResult === 1,
+      }
+    }
+
+    const { Randomness, switchboardProgram, randomnessGatewayUrl } = await getSwitchboardContext()
+    const randomness = new Randomness(switchboardProgram, new PublicKey(randomnessAccount))
 
     const revealActionIx = await program.methods.revealActionResult().accounts({
       character: characterPk,
@@ -259,7 +360,11 @@ export function useSolanaService() {
     let lastError: unknown
     for (let attempt = 1; attempt <= 5; attempt++) {
       try {
-        const revealRandomnessIx = await randomness.revealIx(wallet.publicKey)
+        const revealRandomnessIx = await buildRevealRandomnessIx(
+          randomness,
+          wallet.publicKey,
+          randomnessGatewayUrl,
+        )
         await provider.sendAndConfirm(
           new Transaction().add(revealRandomnessIx, revealActionIx),
           [],
@@ -282,7 +387,7 @@ export function useSolanaService() {
         }
       } catch (error) {
         lastError = error
-        await sleep(1500)
+        await sleep(REVEAL_RETRY_BACKOFF_MS)
       }
     }
 
@@ -295,7 +400,6 @@ export function useSolanaService() {
     bonus: number,
   ): Promise<DiceResult> => {
     await doAction(diceSize, successFloor, bonus)
-    await sleep(1500)
     return revealActionResult()
   }
 
