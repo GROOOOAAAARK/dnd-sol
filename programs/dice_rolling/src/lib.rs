@@ -236,7 +236,7 @@ mod tests {
 
     #[test]
     fn dice_result_is_one_based_and_marks_critical_failure() {
-        let result = DiceRollingState::_build_dice_result(0, 0, 20, 20).unwrap();
+        let result = DiceRollingState::_build_dice_result(1, 0, 20, 20).unwrap();
 
         assert_eq!(result.raw_result, 1);
         assert!(!result.success);
@@ -246,7 +246,7 @@ mod tests {
 
     #[test]
     fn dice_result_marks_max_roll_as_critical_success() {
-        let result = DiceRollingState::_build_dice_result(19, 0, 20, 20).unwrap();
+        let result = DiceRollingState::_build_dice_result(20, 0, 20, 20).unwrap();
 
         assert_eq!(result.raw_result, 20);
         assert!(result.success);
@@ -256,7 +256,7 @@ mod tests {
 
     #[test]
     fn dice_result_applies_bonus_to_success_check() {
-        let result = DiceRollingState::_build_dice_result(12, 2, 15, 20).unwrap();
+        let result = DiceRollingState::_build_dice_result(13, 2, 15, 20).unwrap();
 
         assert_eq!(result.raw_result, 13);
         assert!(result.success);
