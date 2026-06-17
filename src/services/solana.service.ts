@@ -337,6 +337,8 @@ export function useSolanaService() {
       const successFloor = Number(diceState.successFloor)
       const diceSize = Number(diceState.diceSize)
 
+      console.debug("Dice rolling result:\n raw_result: ", rawResult, "\nbonus: ", bonus, "\ncritical_success: ", rawResult === diceSize, "\ncritical_failure: ", rawResult === 1)
+
       return {
         raw_result: rawResult,
         bonus,
