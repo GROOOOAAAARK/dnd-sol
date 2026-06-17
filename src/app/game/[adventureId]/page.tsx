@@ -3,14 +3,16 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
+import { DiceModal } from "@/components/dice-modal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 import { useGameService } from "@/services/game.service";
 import { useAdventureService } from "@/services/adventure.service";
-import type { AdventureStep, GameAction } from "@/models/types";
+import type { AdventureStep, DiceResult, GameAction } from "@/models/types";
 import { useCharacterStore } from "@/stores/selectedCharacter.store";
 import { useSolanaService } from "@/services/solana.service";
+import { isSupportedDiceSides } from "@/lib/diceGeometry";
 
 export default function GamePage() {
   const params = useParams();
@@ -21,6 +23,9 @@ export default function GamePage() {
   const [currentStep, setCurrentStep] = useState<AdventureStep | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [pendingDiceAction, setPendingDiceAction] = useState<GameAction | null>(
+    null
+  );
   const character = useCharacterStore((state) => state.selectedCharacter);
 
   const adventureId = params.adventureId as string;
@@ -78,23 +83,25 @@ export default function GamePage() {
       }
 
       const { verifyRequirements } = gameServiceRef.current;
-      const { performDiceAction } = solanaService;
       const { getNextStep } = adventureServiceRef.current;
       const isValid = await verifyRequirements(action, character!);
 
       if (isValid && currentStep) {
-        let nextStepId = action.default_next_step_id ?? action.success_next_step_id;
+        const diceParams = action.dice_roll_params;
 
-        if (action.dice_roll_params) {
-          const result = await performDiceAction(
-            action.dice_roll_params.sides,
-            action.dice_roll_params.success_floor,
-            action.dice_roll_params.bonus || 0,
-          );
-          nextStepId = result.success
-            ? action.success_next_step_id
-            : action.failure_next_step_id ?? action.default_next_step_id;
+        if (diceParams) {
+          if (!isSupportedDiceSides(diceParams.sides)) {
+            throw new Error(
+              `D${diceParams.sides} is not supported by the dice modal`
+            );
+          }
+
+          setPendingDiceAction(action);
+          return;
         }
+
+        const nextStepId =
+          action.default_next_step_id ?? action.success_next_step_id;
 
         if (!nextStepId) {
           throw new Error("Action has no next step configured");
@@ -113,6 +120,33 @@ export default function GamePage() {
     }
   };
 
+  const handleDiceContinue = async (action: GameAction, result: DiceResult) => {
+    setActionLoading(true);
+    try {
+      const { getNextStep } = adventureServiceRef.current;
+      const didSucceed = result.critical_success
+        ? true
+        : result.critical_failure
+        ? false
+        : result.success;
+      const nextStepId = didSucceed
+        ? action.success_next_step_id ?? action.default_next_step_id
+        : action.failure_next_step_id ?? action.default_next_step_id;
+
+      if (!nextStepId) {
+        throw new Error("Dice action has no next step configured");
+      }
+
+      const nextStep = await getNextStep(adventureId, nextStepId);
+      setCurrentStep(nextStep);
+      setPendingDiceAction(null);
+    } catch (error) {
+      console.error("Failed to continue after dice roll:", error);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="container flex items-center justify-center py-32">
@@ -121,7 +155,7 @@ export default function GamePage() {
     );
   }
 
-  if (!loading && !currentStep) {
+  if (!currentStep) {
     return (
       <div className="container py-12 text-center">
         <h1 className="text-3xl font-bold mb-4">Adventure step not found</h1>
@@ -134,6 +168,8 @@ export default function GamePage() {
       </div>
     );
   }
+
+  const pendingDiceParams = pendingDiceAction?.dice_roll_params;
 
   return (
     <div className="container max-w-4xl py-12">
@@ -162,7 +198,7 @@ export default function GamePage() {
                   variant="outline"
                   className="justify-start h-auto py-4 px-4 text-left"
                   onClick={() => handleAction(action)}
-                  disabled={actionLoading}
+                  disabled={actionLoading || Boolean(pendingDiceAction)}
                 >
                   <div>
                     <div className="font-medium">{action.title}</div>
@@ -176,6 +212,28 @@ export default function GamePage() {
           </div>
         </CardContent>
       </Card>
+
+      {pendingDiceAction &&
+      pendingDiceParams &&
+      isSupportedDiceSides(pendingDiceParams.sides) ? (
+        <DiceModal
+          actionDescription={pendingDiceAction.description}
+          actionTitle={pendingDiceAction.title}
+          bonus={pendingDiceParams.bonus ?? 0}
+          completing={actionLoading}
+          diceType={pendingDiceParams.sides}
+          onCancel={() => setPendingDiceAction(null)}
+          onContinue={(result) => handleDiceContinue(pendingDiceAction, result)}
+          performRoll={() =>
+            solanaService.performDiceAction(
+              pendingDiceParams.sides,
+              pendingDiceParams.success_floor,
+              pendingDiceParams.bonus ?? 0 // TODO: bonus should be calculated from the character stats (onchain ?)
+            )
+          }
+          successFloor={pendingDiceParams.success_floor}
+        />
+      ) : null}
     </div>
   );
 }
