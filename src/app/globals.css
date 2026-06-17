@@ -29,6 +29,16 @@
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
+    --dice-modal: 260 45% 18%;
+    --dice-modal-foreground: 268 100% 97%;
+    --dice-modal-border: 262 39% 36%;
+    --dice-gold: 43 96% 56%;
+    --dice-gold-foreground: 260 45% 12%;
+    --dice-glow: 265 90% 72%;
+    --success: 142 64% 38%;
+    --success-foreground: 142 76% 96%;
+    --critical-fail: 348 76% 45%;
+    --critical-fail-foreground: 348 100% 97%;
   }
 
   .dark {
@@ -56,6 +66,16 @@
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
+    --dice-modal: 260 50% 12%;
+    --dice-modal-foreground: 268 100% 97%;
+    --dice-modal-border: 262 48% 32%;
+    --dice-gold: 43 96% 56%;
+    --dice-gold-foreground: 260 45% 12%;
+    --dice-glow: 265 90% 72%;
+    --success: 142 64% 38%;
+    --success-foreground: 142 76% 96%;
+    --critical-fail: 348 76% 45%;
+    --critical-fail-foreground: 348 100% 97%;
   }
 }
 
