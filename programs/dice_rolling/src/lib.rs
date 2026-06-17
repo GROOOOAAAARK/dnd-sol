@@ -124,7 +124,7 @@ impl DiceRollingState {
                 .get_value(&clock)
                 .map_err(|_| ErrorCode::RandomnessNotResolved)?;
 
-            let modulated_random_value = revealed_random_value[0] % dice_rolling.dice_size + 1;
+            let modulated_random_value = (revealed_random_value[0] % dice_rolling.dice_size) + 1;
 
             let dice_result = Self::_build_dice_result(
                 modulated_random_value,
@@ -151,7 +151,7 @@ impl DiceRollingState {
             hash_input.extend_from_slice(dice_rolling.key().as_ref());
 
             let hash = anchor_lang::solana_program::keccak::hash(&hash_input);
-            let modulated_random_value = hash.0[0] % dice_rolling.dice_size + 1;
+            let modulated_random_value = (hash.0[0] % dice_rolling.dice_size) + 1;
 
             let dice_result = Self::_build_dice_result(
                 modulated_random_value,
