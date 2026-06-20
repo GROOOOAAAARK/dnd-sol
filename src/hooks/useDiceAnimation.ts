@@ -49,7 +49,6 @@ export function useDiceAnimation({ diceType, roll }: UseDiceAnimationParams) {
 
     try {
       const result = await roll();
-      debugger;
       const targetRotation = getTargetRotation(diceType, result.raw_result);
 
       setState({
