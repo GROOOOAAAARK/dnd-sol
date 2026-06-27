@@ -9,7 +9,6 @@ pub mod dice_rolling {
     use super::*;
 
     pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
-        msg!("Let's roll the dice ({:?})", ctx.program_id);
         let dice_rolling = &mut ctx.accounts.dice_rolling;
         dice_rolling.latest_roll_result = 0;
         dice_rolling.randomness_account = Pubkey::default(); // Placeholder, will be set in commit_roll
@@ -86,7 +85,6 @@ impl DiceRollingState {
             dice_rolling.dice_size = dice_size;
             dice_rolling.success_floor = success_floor;
             dice_rolling.bonus = bonus;
-            dice_rolling.latest_roll_result = 0;
             Ok(true)
         }
 
@@ -97,7 +95,6 @@ impl DiceRollingState {
             dice_rolling.dice_size = dice_size;
             dice_rolling.success_floor = success_floor;
             dice_rolling.bonus = bonus;
-            dice_rolling.latest_roll_result = 0;
             Ok(true)
         }
     }
