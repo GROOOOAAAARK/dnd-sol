@@ -1,8 +1,15 @@
 "use client"
 
-import { BorshAccountsCoder, Program } from "@coral-xyz/anchor"
+import { BorshAccountsCoder, BorshCoder, Program, utils } from "@coral-xyz/anchor"
 import { PublicKey, SystemProgram, SYSVAR_SLOT_HASHES_PUBKEY, Transaction } from "@solana/web3.js"
 import type { Character, DiceResult } from "@/models/types"
+import {
+  anchorDiceResultToModel,
+  anchorDiceRollingStateToDiceResult,
+  type AnchorDiceResult,
+  type AnchorDiceRollingState,
+  type RpcTransactionMetaWithReturn,
+} from "@/models/solana_types"
 import DndSolIDL from "@/idl/dnd_sol.json"
 import DiceRollIDL from "@/idl/dice_rolling.json"
 import { useAnchorWallet } from "@solana/wallet-adapter-react"
@@ -15,10 +22,21 @@ import bs58 from "bs58"
 
 const randomnessStorageKey = (characterId: string) => `dnd-randomness:${characterId}`
 const REVEAL_RETRY_BACKOFF_MS = 1500
+const TX_RETURN_FETCH_ATTEMPTS = 5
+const TX_RETURN_FETCH_BACKOFF_MS = 300
 const LOCALNET_RANDOMNESS_PLACEHOLDER = "localnet-mock"
 const isLocalnet = process.env.NEXT_PUBLIC_SOLANA_CLUSTER === "localnet"
+const dndTypesCoder = new BorshCoder(DndSolIDL as any).types
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+const assertValidDiceResult = (result: DiceResult, diceSize: number): void => {
+  if (result.raw_result < 1 || result.raw_result > diceSize) {
+    throw new Error(
+      `Reveal returned invalid raw_result: ${result.raw_result} (expected 1..${diceSize})`,
+    )
+  }
+}
 
 export function useSolanaService() {
   const { connection } = useConnection()
@@ -302,7 +320,65 @@ export function useSolanaService() {
     persistRandomnessAccount(selectedCharacter.id, randomness.pubkey.toBase58())
   }
 
-  const revealActionResult = async (): Promise<DiceResult> => {
+  const parseRevealReturnFromTx = async (signature: string): Promise<AnchorDiceResult> => {
+    const expectedProgramId = dndSolProgramId.toBase58()
+    let lastError: Error | undefined
+
+    for (let attempt = 1; attempt <= TX_RETURN_FETCH_ATTEMPTS; attempt++) {
+      const tx = await connection.getTransaction(signature, {
+        commitment: "confirmed",
+        maxSupportedTransactionVersion: 0,
+      })
+
+      if (tx?.meta?.err) {
+        throw new Error(`Reveal transaction failed: ${JSON.stringify(tx.meta.err)}`)
+      }
+
+      const returnData = (tx?.meta as RpcTransactionMetaWithReturn | null | undefined)?.returnData
+      if (returnData) {
+        if (returnData.programId !== expectedProgramId) {
+          throw new Error(
+            `Unexpected return program: ${returnData.programId} (expected ${expectedProgramId})`,
+          )
+        }
+
+        const [payload] = returnData.data
+        const bytes = utils.bytes.base64.decode(payload)
+        return dndTypesCoder.decode("DiceResult", bytes) as AnchorDiceResult
+      }
+
+      lastError = new Error("Reveal transaction return data not found")
+      await sleep(TX_RETURN_FETCH_BACKOFF_MS)
+    }
+
+    throw lastError ?? new Error("Reveal transaction return data not found")
+  }
+
+  const revealAccounts = (characterPk: PublicKey, diceRollingStatePda: PublicKey, randomnessAccountData: PublicKey) => ({
+    character: characterPk,
+    player: wallet!.publicKey,
+    diceRollingState: diceRollingStatePda,
+    randomnessAccountData,
+    diceRollingProgram: diceRollingProgramId,
+  })
+
+  const logDiceRollingStateDebug = async (diceRollingStatePda: PublicKey, instructionResult: DiceResult) => {
+    if (process.env.NODE_ENV === "production") {
+      return
+    }
+
+    const diceAccountInfo = await connection.getAccountInfo(diceRollingStatePda, "confirmed")
+    if (!diceAccountInfo) {
+      console.debug("[dice] PDA not found for debug decode after reveal")
+      return
+    }
+
+    const pdaResult = decodeDiceRollingState(diceAccountInfo.data)
+    console.debug("[dice] reveal instruction result:", instructionResult)
+    console.debug("[dice] PDA decoded state:", pdaResult)
+  }
+
+  const revealActionResult = async (diceSize: number): Promise<DiceResult> => {
     if (!wallet || !program || !diceRollProgram || !provider) {
       throw new Error("Wallet not connected")
     }
@@ -319,45 +395,21 @@ export function useSolanaService() {
     const characterPk = new PublicKey(selectedCharacter.id)
 
     if (isLocalnet) {
-      const revealActionIx = await program.methods.revealActionResult().accounts({
-        character: characterPk,
-        player: wallet.publicKey,
-        diceRollingState: diceRollingStatePda,
-        randomnessAccountData: SYSVAR_SLOT_HASHES_PUBKEY,
-        diceRollingProgram: diceRollingProgramId,
-      }).instruction()
+      const signature = await program.methods
+        .revealActionResult()
+        .accounts(revealAccounts(characterPk, diceRollingStatePda, SYSVAR_SLOT_HASHES_PUBKEY))
+        .rpc()
 
-      await provider.sendAndConfirm(new Transaction().add(revealActionIx), [])
-
-      const diceState = await (diceRollProgram as any).account.diceRollingState.fetch(diceRollingStatePda)
       clearRandomnessAccount(selectedCharacter.id)
 
-      const rawResult = Number(diceState.latestRollResult)
-      const bonus = Number(diceState.bonus)
-      const successFloor = Number(diceState.successFloor)
-      const diceSize = Number(diceState.diceSize)
-
-      console.debug("Dice rolling result:\n raw_result: ", rawResult, "\nbonus: ", bonus, "\ncritical_success: ", rawResult === diceSize, "\ncritical_failure: ", rawResult === 1)
-
-      return {
-        raw_result: rawResult,
-        bonus,
-        success: rawResult + bonus >= successFloor,
-        critical_success: rawResult === diceSize,
-        critical_failure: rawResult === 1,
-      }
+      const result = anchorDiceResultToModel(await parseRevealReturnFromTx(signature))
+      assertValidDiceResult(result, diceSize)
+      await logDiceRollingStateDebug(diceRollingStatePda, result)
+      return result
     }
 
     const { Randomness, switchboardProgram, randomnessGatewayUrl } = await getSwitchboardContext()
     const randomness = new Randomness(switchboardProgram, new PublicKey(randomnessAccount))
-
-    const revealActionIx = await program.methods.revealActionResult().accounts({
-      character: characterPk,
-      player: wallet.publicKey,
-      diceRollingState: diceRollingStatePda,
-      randomnessAccountData: randomness.pubkey,
-      diceRollingProgram: diceRollingProgramId,
-    }).instruction()
 
     let lastError: unknown
     for (let attempt = 1; attempt <= 5; attempt++) {
@@ -367,26 +419,18 @@ export function useSolanaService() {
           wallet.publicKey,
           randomnessGatewayUrl,
         )
-        await provider.sendAndConfirm(
-          new Transaction().add(revealRandomnessIx, revealActionIx),
-          [],
-        )
+        const signature = await program.methods
+          .revealActionResult()
+          .accounts(revealAccounts(characterPk, diceRollingStatePda, randomness.pubkey))
+          .preInstructions([revealRandomnessIx])
+          .rpc()
 
-        const diceState = await (diceRollProgram as any).account.diceRollingState.fetch(diceRollingStatePda)
         clearRandomnessAccount(selectedCharacter.id)
 
-        const rawResult = Number(diceState.latestRollResult)
-        const bonus = Number(diceState.bonus)
-        const successFloor = Number(diceState.successFloor)
-        const diceSize = Number(diceState.diceSize)
-
-        return {
-          raw_result: rawResult,
-          bonus,
-          success: rawResult + bonus >= successFloor,
-          critical_success: rawResult === diceSize,
-          critical_failure: rawResult === 1,
-        }
+        const result = anchorDiceResultToModel(await parseRevealReturnFromTx(signature))
+        assertValidDiceResult(result, diceSize)
+        await logDiceRollingStateDebug(diceRollingStatePda, result)
+        return result
       } catch (error) {
         lastError = error
         await sleep(REVEAL_RETRY_BACKOFF_MS)
@@ -396,13 +440,19 @@ export function useSolanaService() {
     throw lastError
   }
 
+  /** Decode dice PDA account data — debug / inspection only; use instruction return for gameplay. */
+  const decodeDiceRollingState = (data: Buffer): DiceResult => {
+    const diceCoder = new BorshAccountsCoder(DiceRollIDL as any)
+    const diceState = diceCoder.decode("DiceRollingState", data) as AnchorDiceRollingState
+    return anchorDiceRollingStateToDiceResult(diceState)
+  }
   const performDiceAction = async (
     diceSize: number,
     successFloor: number,
     bonus: number,
   ): Promise<DiceResult> => {
     await doAction(diceSize, successFloor, bonus)
-    return revealActionResult()
+    return revealActionResult(diceSize)
   }
 
   return {
