@@ -199,14 +199,13 @@ export const mockGameSteps: Record<string, AdventureStep> = {
         id: "action_bell_fight",
         title: "Prepare for combat",
         description: "Draw your weapon and ready yourself to fight the guards.",
-        requirements: {
-          stats: { strength: 14, constitution: 12 },
-        },
         dice_roll_params: {
           sides: 20,
           rolls: 2,
           success_floor: 15,
         },
+        success_next_step_id: "step_adv4_bell_success_fight",
+        failure_next_step_id: "step_adv4_bell_failure_fight",
       },
       {
         id: "action_bell_flee",
@@ -358,7 +357,7 @@ export const mockGameSteps: Record<string, AdventureStep> = {
         description:
           "Quickly duck into shadows or behind debris before the guards arrive.",
         requirements: {
-          stats: { dexterity: 16 },
+          stats: { dexterity: 8 },
         },
         dice_roll_params: {
           sides: 20,
@@ -395,6 +394,27 @@ export const mockGameSteps: Record<string, AdventureStep> = {
         },
       },
     ],
+  },
+
+  // ===== BELL FIGHT - FAILURE PATH =====
+  step_adv4_bell_failure_fight: {
+    id: "step_adv4_bell_failure_fight",
+    adventureId: "adv4",
+    title: "Woundful defeat",
+    description:
+      "While trying to pull your sword out of your back, 2 guards come from nowhere and stab you to death.",
+    actions: [],
+    is_death_step: true,
+  },
+  // ===== BELL FIGHT - SUCCESS PATH =====
+  step_adv4_bell_success_fight: {
+    id: "step_adv4_bell_success_fight",
+    adventureId: "adv4",
+    title: "You have won",
+    description:
+      "You have defeated the guards. You are victorious.",
+    actions: [],
+    is_win_step: true,
   },
 
   // ===== ENTER SMOOTHLY - DOOR LOCKED PATH =====
