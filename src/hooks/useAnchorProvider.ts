@@ -10,6 +10,10 @@ export function useAnchorProvider() {
 
   return useMemo(() => {
     if (!wallet) return null
-    return new AnchorProvider(connection, wallet, AnchorProvider.defaultOptions())
+    return new AnchorProvider(connection, wallet, {
+      ...AnchorProvider.defaultOptions(),
+      commitment: "confirmed",
+      preflightCommitment: "confirmed",
+    })
   }, [connection, wallet])
 }
