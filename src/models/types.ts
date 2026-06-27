@@ -94,14 +94,14 @@ export interface DiceRollParams {
 // Game types
 
 /*
-  * @description: GameAction represents the possibilities
-  * for a given adventure step
-  * @attribute: requirements is here, it represents the static
-  * conditions to perform the given action (character stats or items)
-  * @attribute: if dice_roll_params is here, the player will need to perform
-  * a dice roll and if the result is enough, the action will be a success. If not,
-  * the action is a failure. In the future, a failure shoumld imply a malus (health points or else)
-*/
+ * @description: GameAction represents the possibilities
+ * for a given adventure step
+ * @attribute: requirements is here, it represents the static
+ * conditions to perform the given action (character stats or items)
+ * @attribute: if dice_roll_params is here, the player will need to perform
+ * a dice roll and if the result is enough, the action will be a success. If not,
+ * the action is a failure. In the future, a failure shoumld imply a malus (health points or else)
+ */
 export interface GameAction {
   id: string;
   title: string;
@@ -123,6 +123,8 @@ export interface AdventureStep {
   description: string;
   image?: string;
   actions: GameAction[];
+  is_win_step?: boolean;
+  is_death_step?: boolean;
 }
 
 export interface DiceResult {
