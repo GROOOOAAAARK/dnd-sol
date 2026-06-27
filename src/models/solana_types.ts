@@ -2,6 +2,17 @@ import type { PublicKey } from "@solana/web3.js"
 
 import type { DiceResult } from "@/models/types"
 
+/** `meta.returnData` from `getTransaction` (not yet on web3.js ConfirmedTransactionMeta). */
+export type RpcTransactionReturnData = {
+  programId: string
+  data: [string, "base64"]
+}
+
+export type RpcTransactionMetaWithReturn = {
+  err: unknown
+  returnData?: RpcTransactionReturnData | null
+}
+
 /** On-chain `DiceResult` from `dice_rolling::reveal_roll` / `dnd_sol::reveal_action_result`. */
 export interface AnchorDiceResult {
   raw_result: number
