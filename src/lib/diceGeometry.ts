@@ -1,4 +1,7 @@
-export type DiceRotation = readonly [number, number, number];
+import { buildTargetRotationsFromGeometry } from "@/lib/diceFaceGeometry";
+import { DiceType, type DiceRotation } from "@/lib/diceTypes";
+
+export { DiceType, type DiceRotation } from "@/lib/diceTypes";
 
 export interface DiceDefinition {
   type: DiceType;
@@ -7,65 +10,18 @@ export interface DiceDefinition {
   targetRotations: Record<number, DiceRotation>;
 }
 
-export enum DiceType {
-  D2 = 2,
-  D4 = 4,
-  D6 = 6,
-  D20 = 20,
-}
-
-const buildRotations = (
-  type: DiceType
-): Record<number, DiceRotation> => {
-  const rotations: Record<number, DiceRotation> = {};
-
-  for (let face = 1; face <= type; face += 1) {
-    const progress = (face - 1) / type;
-    rotations[face] = [
-      Number((progress * Math.PI * 2).toFixed(4)),
-      Number((((face % 5) / 5) * Math.PI * 2).toFixed(4)),
-      Number((((face % 3) / 3) * Math.PI * 2).toFixed(4)),
-    ];
-  }
-
-  return rotations;
-};
+const buildDiceDefinition = (type: DiceType, label: string): DiceDefinition => ({
+  type,
+  label,
+  faces: [...Array(type)].map((_, index) => index + 1),
+  targetRotations: buildTargetRotationsFromGeometry(type),
+});
 
 const diceDefinitions: Record<DiceType, DiceDefinition> = {
-  [DiceType.D2]: {
-    type: DiceType.D2,
-    label: "D2",
-    faces: [1, 2],
-    targetRotations: {
-      1: [Math.PI / 2, 0, 0],
-      2: [-Math.PI / 2, 0, 0],
-    },
-  },
-  [DiceType.D4]: {
-    type: DiceType.D4,
-    label: "D4",
-    faces: [1, 2, 3, 4],
-    targetRotations: buildRotations(4),
-  },
-  [DiceType.D6]: {
-    type: DiceType.D6,
-    label: "D6",
-    faces: [1, 2, 3, 4, 5, 6],
-    targetRotations: {
-      1: [0, 0, 0],
-      2: [0, -Math.PI / 2, 0],
-      3: [Math.PI / 2, 0, 0],
-      4: [-Math.PI / 2, 0, 0],
-      5: [0, Math.PI / 2, 0],
-      6: [Math.PI, 0, 0],
-    },
-  },
-  [DiceType.D20]: {
-    type: DiceType.D20,
-    label: "D20",
-    faces: [...Array(20)].map((_, index) => index + 1),
-    targetRotations: buildRotations(20),
-  },
+  [DiceType.D2]: buildDiceDefinition(DiceType.D2, "D2"),
+  [DiceType.D4]: buildDiceDefinition(DiceType.D4, "D4"),
+  [DiceType.D6]: buildDiceDefinition(DiceType.D6, "D6"),
+  [DiceType.D20]: buildDiceDefinition(DiceType.D20, "D20"),
 };
 
 export const isSupportedDiceSides = (
