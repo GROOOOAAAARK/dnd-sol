@@ -1,0 +1,34 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum AdventureCheckpointStatus {
+  Active
+  Completed
+}
+
+model AdventureCheckpoint {
+  id                   Int                       @id @default(autoincrement())
+  walletPubkey         String                    @map("wallet_pubkey")
+  characterId          String                    @map("character_id")
+  adventureId          String                    @map("adventure_id")
+  currentStepId        String                    @map("current_step_id")
+  adventureSeed        String                    @map("adventure_seed")
+  seedSalt             String                    @map("seed_salt")
+  adventureSeedHash    String                    @map("adventure_seed_hash")
+  seedSaltHash         String                    @map("seed_salt_hash")
+  adventurePathHash    String                    @map("adventure_path_hash")
+  adventureVersionHash String                    @map("adventure_version_hash")
+  saveRevision         Int                       @default(1) @map("save_revision")
+  status               AdventureCheckpointStatus @default(Active)
+  startedAt            DateTime                  @default(now()) @map("started_at")
+  updatedAt            DateTime                  @updatedAt @map("updated_at")
+  completedAt          DateTime?                 @map("completed_at")
+
+  @@unique([walletPubkey, characterId, adventureId])
+  @@map("adventure_checkpoints")
+}
