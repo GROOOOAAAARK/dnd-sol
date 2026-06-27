@@ -10,7 +10,7 @@ import {
   parseIdentity,
   readJsonBody,
   validateAdventure,
-} from "@/server/adventure-checkpoints/routes";
+} from "@/app/api/adventures/[adventureId]/utils";
 
 export async function POST(
   request: Request,

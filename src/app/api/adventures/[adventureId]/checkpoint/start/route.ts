@@ -16,7 +16,7 @@ import {
   parseIdentity,
   readJsonBody,
   validateAdventure,
-} from "@/server/adventure-checkpoints/routes";
+} from "@/app/api/adventures/[adventureId]/utils";
 
 export const runtime = "nodejs";
 
@@ -57,8 +57,8 @@ export async function POST(
     ...identity,
     adventure_id: adventureId,
     current_step_id: adventure.first_step_id,
-    adventure_seed: adventureSeed,
-    seed_salt: seedSalt,
+    adventure_seed: adventureSeed, //TODO: encrypt server-side
+    seed_salt: seedSalt, //TODO: encrypt server-side
     adventure_seed_hash: hashString(adventureSeed),
     seed_salt_hash: seedSaltHash,
     adventure_path_hash: getAdventurePathHash(seedSaltHash, adventureId),

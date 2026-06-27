@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { mockAdventures } from "@/assets/mocks/adventures";
 import { getAdventureCheckpointRepository } from "@/server/adventure-checkpoints/repository";
-import { parseIdentityFromSearchParams } from "@/server/adventure-checkpoints/routes";
+import { parseIdentityFromSearchParams } from "@/app/api/adventures/[adventureId]/utils";
 
 export const runtime = "nodejs";
 

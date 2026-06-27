@@ -6,7 +6,7 @@ import {
   getAdventureId,
   parseIdentityFromSearchParams,
   validateAdventure,
-} from "@/server/adventure-checkpoints/routes";
+} from "@/app/api/adventures/[adventureId]/utils";
 
 export const runtime = "nodejs";
 
