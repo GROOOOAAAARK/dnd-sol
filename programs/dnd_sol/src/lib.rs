@@ -72,7 +72,7 @@ pub mod dnd_sol {
             user: ctx.accounts.player.to_account_info(),
         };
 
-        dice_rolling::cpi::reveal_roll(CpiContext::new(cpi_program, cpi_accounts)).map(|result| result.get())
+        Ok(dice_rolling::cpi::reveal_roll(CpiContext::new(cpi_program, cpi_accounts))?.get())
     }
 }
 
