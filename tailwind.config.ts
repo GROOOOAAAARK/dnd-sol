@@ -58,6 +58,28 @@ const config = {
   				'3': 'hsl(var(--chart-3))',
   				'4': 'hsl(var(--chart-4))',
   				'5': 'hsl(var(--chart-5))'
+  			},
+  			dice: {
+  				modal: {
+  					DEFAULT: 'hsl(var(--dice-modal))',
+  					foreground: 'hsl(var(--dice-modal-foreground))',
+  					border: 'hsl(var(--dice-modal-border))'
+  				},
+  				gold: {
+  					DEFAULT: 'hsl(var(--dice-gold))',
+  					foreground: 'hsl(var(--dice-gold-foreground))'
+  				},
+  				glow: 'hsl(var(--dice-glow))'
+  			},
+  			success: {
+  				DEFAULT: 'hsl(var(--success))',
+  				foreground: 'hsl(var(--success-foreground))'
+  			},
+  			critical: {
+  				fail: {
+  					DEFAULT: 'hsl(var(--critical-fail))',
+  					foreground: 'hsl(var(--critical-fail-foreground))'
+  				}
   			}
   		},
   		borderRadius: {
