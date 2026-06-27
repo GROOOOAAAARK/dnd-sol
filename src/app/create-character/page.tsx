@@ -34,8 +34,7 @@ import { useAnchorWallet } from "@solana/wallet-adapter-react";
 import { characterClasses, characterRaces } from "@/constants/character";
 import { useCharacterStore } from "@/stores/selectedCharacter.store";
 import { useCharactersStore } from "@/stores/characters.store";
-import { Character } from "@/models/types";
-import { CharacterStats } from '../../models/types';
+import { Character, CharacterStats } from '@/models/types';
 import { useSolanaService } from "@/services/solana.service";
 
 const formSchema = z
