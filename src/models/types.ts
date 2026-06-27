@@ -30,6 +30,60 @@ export interface Adventure {
   first_step_id: string;
 }
 
+export type AdventureCheckpointStatus = "Active" | "Completed";
+
+export interface AdventureCheckpoint {
+  wallet_pubkey: string;
+  character_id: string;
+  adventure_id: string;
+  current_step_id: string;
+  adventure_seed_hash: string;
+  seed_salt_hash: string;
+  adventure_path_hash: string;
+  adventure_version_hash: string;
+  save_revision: number;
+  status: AdventureCheckpointStatus;
+  started_at: string;
+  updated_at: string;
+  completed_at: string | null;
+}
+
+export interface AdventureCheckpointIdentity {
+  wallet_pubkey: string;
+  character_id: string;
+}
+
+export interface StartAdventureCheckpointInput
+  extends AdventureCheckpointIdentity {
+  restart?: boolean;
+}
+
+export interface SaveAdventureCheckpointInput
+  extends AdventureCheckpointIdentity {
+  current_step_id: string;
+}
+
+export type CompleteAdventureCheckpointInput = AdventureCheckpointIdentity;
+
+export type ResetAdventureCheckpointInput = AdventureCheckpointIdentity;
+
+export interface AdventureCheckpointResponse {
+  checkpoint: AdventureCheckpoint;
+  currentStep: AdventureStep;
+  compatible: true;
+}
+
+export interface IncompatibleAdventureCheckpointResponse {
+  checkpoint: AdventureCheckpoint;
+  currentStep: null;
+  compatible: false;
+  reason: "AdventureVersionChanged" | "StepNotFound";
+}
+
+export type CurrentAdventureCheckpointResponse =
+  | AdventureCheckpointResponse
+  | IncompatibleAdventureCheckpointResponse;
+
 export interface DiceRollParams {
   sides: number;
   rolls: number;
