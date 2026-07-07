@@ -91,6 +91,8 @@ export const mockGameSteps: Record<string, AdventureStep> = {
         description:
           "Pull the rope and ring the ancient bell to announce your presence.",
         success_next_step_id: "step_adv4_bell_success",
+        default_next_step_id: "step_adv4_bell_nothing",
+        failure_next_step_id: "step_adv4_bell_failure",
         dice_roll_params: {
           sides: 20,
           rolls: 1,
