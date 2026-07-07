@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - ready_for_review
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  anchor:
+    if: github.event_name == 'push' || !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    container:
+      image: projectserum/anchor:latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache Anchor build artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            target
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: anchor-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'programs/**/*.rs', 'programs/**/Cargo.toml') }}
+          restore-keys: |
+            anchor-${{ runner.os }}-
+
+      - name: Set up Solana wallet
+        run: solana-keygen new --no-bip39-passphrase --force --silent
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.3
+
+      - name: Install Node dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build Anchor programs
+        run: anchor build -- --features localnet-mock
+
+      - name: Run Anchor tests
+        run: anchor test --skip-build -- --features localnet-mock
+
+  bun-build:
+    if: github.event_name == 'push' || !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    container:
+      image: oven/bun:1.2.3
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache Bun dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            bun-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Prepare IDL artifacts for Next.js build
+        run: |
+          mkdir -p target/idl
+          cp src/idl/*.json target/idl/
+
+      - name: Build app
+        env:
+          NEXT_PUBLIC_APP_ENV: dev
+          NEXT_PUBLIC_SOLANA_CLUSTER: localnet
+          NEXT_PUBLIC_DND_PROGRAM_ADDRESS: 5XQUKVykhN5D3WkJ1MdsRxaJDmEszjRzhje3e6TjF4Wd
+          NEXT_PUBLIC_DICE_ROLLING_PROGRAM_ADDRESS: LTwGJmVKw2FkgByX2JehTkS2AqddnniuA2jyV4zZzwv
+        run: bun run build
