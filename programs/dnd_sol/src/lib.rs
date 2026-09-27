@@ -162,8 +162,10 @@ pub enum CharacterRace {
     Elf,
     Dwarf,
     Halfling,
+    Tiefling,
+    Githyanki,
     Orc,
-    Troll,
+    Dragonborn,
 }
 
 impl From<String> for CharacterRace {
@@ -173,8 +175,10 @@ impl From<String> for CharacterRace {
             "elf" => CharacterRace::Elf,
             "dwarf" => CharacterRace::Dwarf,
             "halfling" => CharacterRace::Halfling,
+            "tiefling" => CharacterRace::Tiefling,
+            "githyanki" => CharacterRace::Githyanki,
             "orc" => CharacterRace::Orc,
-            "troll" => CharacterRace::Troll,
+            "dragonborn" => CharacterRace::Dragonborn,
             _ => CharacterRace::default(),
         }
     }
