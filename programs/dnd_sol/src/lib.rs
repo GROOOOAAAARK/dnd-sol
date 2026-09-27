@@ -188,22 +188,24 @@ impl From<String> for CharacterRace {
 pub enum CharacterClass {
     #[default]
     Warrior,
-    Mage,
     Thief,
     Barbarian,
     Monk,
     Wizard,
+    Sorcerer,
+    Druid,
 }
 
 impl From<String> for CharacterClass {
     fn from(s: String) -> Self {
         match s.to_lowercase().as_str() {
             "warrior" => CharacterClass::Warrior,
-            "mage" => CharacterClass::Mage,
             "thief" => CharacterClass::Thief,
             "barbarian" => CharacterClass::Barbarian,
             "monk" => CharacterClass::Monk,
             "wizard" => CharacterClass::Wizard,
+            "sorcerer" => CharacterClass::Sorcerer,
+            "druid" => CharacterClass::Druid,
             _ => CharacterClass::default(),
         }
     }
