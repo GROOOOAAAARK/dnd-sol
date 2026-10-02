@@ -35,7 +35,7 @@ export interface Character {
   id?: string; // Account PubKey
   name: string;
   character_class: CharacterClass;
-  race: string;
+  race: CharacterRace;
   stats: CharacterStats;
   level?: number;
   experience?: number;
