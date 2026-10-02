@@ -34,7 +34,7 @@ export enum CharacterClass {
 export interface Character {
   id?: string; // Account PubKey
   name: string;
-  character_class: string;
+  character_class: CharacterClass;
   race: string;
   stats: CharacterStats;
   level?: number;
