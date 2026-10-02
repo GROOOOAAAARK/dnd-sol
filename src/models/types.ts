@@ -21,6 +21,16 @@ export enum CharacterRace {
   Dragonborn,
 }
 
+export enum CharacterClass {
+  Warrior,
+  Thief,
+  Barbarian,
+  Monk,
+  Wizard,
+  Sorcerer,
+  Druid,
+}
+
 export interface Character {
   id?: string; // Account PubKey
   name: string;
