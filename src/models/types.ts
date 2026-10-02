@@ -10,6 +10,17 @@ export interface CharacterStats {
   charisma: number;
 }
 
+export enum CharacterRace {
+  Human,
+  Elf,
+  Dwarf,
+  Halfling,
+  Tiefling,
+  Githyanki,
+  Orc,
+  Dragonborn,
+}
+
 export interface Character {
   id?: string; // Account PubKey
   name: string;
