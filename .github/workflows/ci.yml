@@ -19,7 +19,7 @@ jobs:
     if: github.event_name == 'push' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
     container:
-      image: projectserum/anchor:latest
+      image: solanafoundation/anchor:latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
