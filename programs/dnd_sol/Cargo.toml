@@ -23,6 +23,9 @@ localnet-mock = ["dice_rolling/localnet-mock"]
 [dependencies]
 anchor-lang = { version = "0.31.1", features = ["init-if-needed"] }
 dice_rolling = {path = "../dice_rolling", features = ["cpi"]}
+# 0.12.x pulls solana-program v3 + anchor-lang 0.32 via kaigan, which breaks
+# switchboard-on-demand's open `solana-program` range. Stay on 0.11.x.
+mpl-core = { version = "0.11.2", features = ["anchor"] }
 
 [dev-dependencies]
 litesvm = "0.7.1"
