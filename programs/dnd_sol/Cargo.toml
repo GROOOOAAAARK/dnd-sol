@@ -21,7 +21,7 @@ custom-panic = []
 localnet-mock = ["dice_rolling/localnet-mock"]
 
 [dependencies]
-anchor-lang = "0.31.0"
+anchor-lang = { version = "0.31.1", features = ["init-if-needed"] }
 dice_rolling = {path = "../dice_rolling", features = ["cpi"]}
 
 [dev-dependencies]
