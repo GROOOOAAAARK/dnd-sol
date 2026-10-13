@@ -49,12 +49,7 @@ impl DiceRollingState {
         1 + // bump
         8; // commit_slot
 
-    fn commit(
-        ctx: Context<DiceRoll>,
-        dice_size: u8,
-        success_floor: u8,
-        bonus: u8,
-    ) -> Result<bool> {
+    fn commit(ctx: Context<DiceRoll>, dice_size: u8, success_floor: u8, bonus: u8) -> Result<bool> {
         let dice_rolling = &mut ctx.accounts.dice_rolling;
 
         if dice_size < 2 {

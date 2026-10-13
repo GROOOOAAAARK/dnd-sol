@@ -38,8 +38,7 @@ pub mod dnd_sol {
             intelligence,
             wisdom,
             charisma,
-        )
-        ?;
+        )?;
         msg!("Character created: {:?}", character.attributes.name);
         Ok(())
     }
@@ -57,7 +56,7 @@ pub mod dnd_sol {
             user: ctx.accounts.player.to_account_info(),
         };
 
-        let action_committed =dice_rolling::cpi::commit_roll(
+        let action_committed = dice_rolling::cpi::commit_roll(
             CpiContext::new(cpi_program, cpi_accounts),
             dice_size,
             success_floor,
