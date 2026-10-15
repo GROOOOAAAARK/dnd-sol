@@ -113,7 +113,7 @@ impl DiceRollingState {
             }
 
             let revealed_random_value = randomness_data
-                .get_value(&clock)
+                .get_value(clock.slot)
                 .map_err(|_| ErrorCode::RandomnessNotResolved)?;
 
             let modulated_random_value = (revealed_random_value[0] % dice_rolling.dice_size) + 1;

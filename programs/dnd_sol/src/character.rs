@@ -119,7 +119,7 @@ impl Character {
         intelligence: u8,
         wisdom: u8,
         charisma: u8,
-    ) -> Result<Character> {
+    ) -> Result<Character, Error> {
         if name.as_bytes().len() > CharacterAttributes::MAX_NAME_LEN {
             return Err(ErrorCodes::NameTooLong.into());
         }

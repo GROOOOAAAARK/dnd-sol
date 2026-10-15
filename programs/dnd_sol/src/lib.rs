@@ -3,6 +3,12 @@
 use anchor_lang::prelude::*;
 use anchor_lang::{AnchorDeserialize, AnchorSerialize};
 
+pub mod attestation;
+pub mod character;
+pub mod error_codes;
+use character::{Character, CharacterAccount, CharacterAttributes};
+use error_codes::ErrorCodes;
+
 declare_id!("5XQUKVykhN5D3WkJ1MdsRxaJDmEszjRzhje3e6TjF4Wd");
 
 #[program]
