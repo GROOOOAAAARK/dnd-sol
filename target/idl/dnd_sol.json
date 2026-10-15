@@ -1,0 +1,712 @@
+{
+  "address": "5XQUKVykhN5D3WkJ1MdsRxaJDmEszjRzhje3e6TjF4Wd",
+  "metadata": {
+    "name": "dnd_sol",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+    {
+      "name": "create_character",
+      "discriminator": [
+        94,
+        208,
+        60,
+        158,
+        114,
+        52,
+        154,
+        50
+      ],
+      "accounts": [
+        {
+          "name": "player",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "character",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  104,
+                  97,
+                  114,
+                  97,
+                  99,
+                  116,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "player"
+              },
+              {
+                "kind": "arg",
+                "path": "name"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "name": "character_class",
+          "type": "string"
+        },
+        {
+          "name": "character_race",
+          "type": "string"
+        },
+        {
+          "name": "strength",
+          "type": "u8"
+        },
+        {
+          "name": "dexterity",
+          "type": "u8"
+        },
+        {
+          "name": "constitution",
+          "type": "u8"
+        },
+        {
+          "name": "intelligence",
+          "type": "u8"
+        },
+        {
+          "name": "wisdom",
+          "type": "u8"
+        },
+        {
+          "name": "charisma",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "do_action",
+      "discriminator": [
+        10,
+        125,
+        182,
+        0,
+        161,
+        66,
+        101,
+        160
+      ],
+      "accounts": [
+        {
+          "name": "player",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "character"
+          ]
+        },
+        {
+          "name": "character",
+          "writable": true
+        },
+        {
+          "name": "dice_rolling_state",
+          "writable": true
+        },
+        {
+          "name": "randomness_account_data",
+          "docs": [
+            "This is the Switchboard Randomness Account"
+          ]
+        },
+        {
+          "name": "dice_rolling_program",
+          "address": "LTwGJmVKw2FkgByX2JehTkS2AqddnniuA2jyV4zZzwv"
+        }
+      ],
+      "args": [
+        {
+          "name": "dice_size",
+          "type": "u8"
+        },
+        {
+          "name": "success_floor",
+          "type": "u8"
+        },
+        {
+          "name": "bonus",
+          "type": "u8"
+        }
+      ],
+      "returns": "bool"
+    },
+    {
+      "name": "init_collections",
+      "discriminator": [
+        70,
+        84,
+        91,
+        237,
+        72,
+        212,
+        133,
+        107
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "items_collection",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  116,
+                  101,
+                  109,
+                  115,
+                  95,
+                  99,
+                  111,
+                  108,
+                  108,
+                  101,
+                  99,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "characters_collection",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  104,
+                  97,
+                  114,
+                  97,
+                  99,
+                  116,
+                  101,
+                  114,
+                  115,
+                  95,
+                  99,
+                  111,
+                  108,
+                  108,
+                  101,
+                  99,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "mpl_core_program",
+          "address": "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initialize",
+      "discriminator": [
+        175,
+        175,
+        109,
+        31,
+        13,
+        152,
+        155,
+        237
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "reveal_action_result",
+      "discriminator": [
+        205,
+        72,
+        13,
+        254,
+        67,
+        39,
+        249,
+        253
+      ],
+      "accounts": [
+        {
+          "name": "player",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "character"
+          ]
+        },
+        {
+          "name": "character",
+          "writable": true
+        },
+        {
+          "name": "dice_rolling_state",
+          "writable": true
+        },
+        {
+          "name": "randomness_account_data",
+          "docs": [
+            "This is the Switchboard Randomness Account"
+          ]
+        },
+        {
+          "name": "dice_rolling_program",
+          "address": "LTwGJmVKw2FkgByX2JehTkS2AqddnniuA2jyV4zZzwv"
+        }
+      ],
+      "args": [],
+      "returns": {
+        "defined": {
+          "name": "DiceResult"
+        }
+      }
+    },
+    {
+      "name": "set_attester",
+      "discriminator": [
+        56,
+        199,
+        234,
+        175,
+        198,
+        241,
+        83,
+        29
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "new_attester",
+          "type": {
+            "array": [
+              "u8",
+              64
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "CharacterAccount",
+      "discriminator": [
+        152,
+        189,
+        17,
+        17,
+        119,
+        227,
+        48,
+        55
+      ]
+    },
+    {
+      "name": "ProgramConfig",
+      "discriminator": [
+        196,
+        210,
+        90,
+        231,
+        144,
+        149,
+        140,
+        63
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "StatsTooHigh",
+      "msg": "Character stats are too high"
+    },
+    {
+      "code": 6001,
+      "name": "StatsTooLow",
+      "msg": "Character stats are too low"
+    },
+    {
+      "code": 6002,
+      "name": "CharacterCreationNotFair",
+      "msg": "Character creation is not fair"
+    },
+    {
+      "code": 6003,
+      "name": "NameTooLong",
+      "msg": "Character name is too long"
+    },
+    {
+      "code": 6004,
+      "name": "InvalidAttestation",
+      "msg": "Attestation signature is invalid"
+    },
+    {
+      "code": 6005,
+      "name": "AttestationExpired",
+      "msg": "Attestation has expired"
+    },
+    {
+      "code": 6006,
+      "name": "UnsupportedTicketVersion",
+      "msg": "Unsupported ticket version"
+    }
+  ],
+  "types": [
+    {
+      "name": "Character",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "attributes",
+            "type": {
+              "defined": {
+                "name": "CharacterAttributes"
+              }
+            }
+          },
+          {
+            "name": "stats",
+            "type": {
+              "defined": {
+                "name": "CharacterStats"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "CharacterAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "character",
+            "type": {
+              "defined": {
+                "name": "Character"
+              }
+            }
+          },
+          {
+            "name": "player",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CharacterAttributes",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "class",
+            "type": {
+              "defined": {
+                "name": "CharacterClass"
+              }
+            }
+          },
+          {
+            "name": "level",
+            "type": "u8"
+          },
+          {
+            "name": "experience",
+            "type": "u32"
+          },
+          {
+            "name": "race",
+            "type": {
+              "defined": {
+                "name": "CharacterRace"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "CharacterClass",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Warrior"
+          },
+          {
+            "name": "Thief"
+          },
+          {
+            "name": "Barbarian"
+          },
+          {
+            "name": "Monk"
+          },
+          {
+            "name": "Wizard"
+          },
+          {
+            "name": "Sorcerer"
+          },
+          {
+            "name": "Druid"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CharacterRace",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Human"
+          },
+          {
+            "name": "Elf"
+          },
+          {
+            "name": "Dwarf"
+          },
+          {
+            "name": "Halfling"
+          },
+          {
+            "name": "Tiefling"
+          },
+          {
+            "name": "Githyanki"
+          },
+          {
+            "name": "Orc"
+          },
+          {
+            "name": "Dragonborn"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CharacterStats",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "strength",
+            "type": "u8"
+          },
+          {
+            "name": "dexterity",
+            "type": "u8"
+          },
+          {
+            "name": "constitution",
+            "type": "u8"
+          },
+          {
+            "name": "intelligence",
+            "type": "u8"
+          },
+          {
+            "name": "wisdom",
+            "type": "u8"
+          },
+          {
+            "name": "charisma",
+            "type": "u8"
+          },
+          {
+            "name": "health",
+            "type": "u16"
+          },
+          {
+            "name": "max_health",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DiceResult",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "raw_result",
+            "type": "u8"
+          },
+          {
+            "name": "bonus",
+            "type": "u8"
+          },
+          {
+            "name": "success",
+            "type": "bool"
+          },
+          {
+            "name": "critical_success",
+            "type": "bool"
+          },
+          {
+            "name": "critical_failure",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProgramConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "attester",
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

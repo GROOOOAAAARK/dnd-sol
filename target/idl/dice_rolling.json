@@ -1,0 +1,325 @@
+{
+  "address": "LTwGJmVKw2FkgByX2JehTkS2AqddnniuA2jyV4zZzwv",
+  "metadata": {
+    "name": "dice_rolling",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Dice rolling features for DnD Sol"
+  },
+  "instructions": [
+    {
+      "name": "commit_roll",
+      "discriminator": [
+        151,
+        186,
+        180,
+        121,
+        169,
+        173,
+        241,
+        109
+      ],
+      "accounts": [
+        {
+          "name": "dice_rolling",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  105,
+                  99,
+                  101,
+                  95,
+                  114,
+                  111,
+                  108,
+                  108,
+                  105,
+                  110,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "randomness_account_data"
+        },
+        {
+          "name": "user",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "dice_size",
+          "type": "u8"
+        },
+        {
+          "name": "success_floor",
+          "type": "u8"
+        },
+        {
+          "name": "bonus",
+          "type": "u8"
+        }
+      ],
+      "returns": "bool"
+    },
+    {
+      "name": "initialize",
+      "discriminator": [
+        175,
+        175,
+        109,
+        31,
+        13,
+        152,
+        155,
+        237
+      ],
+      "accounts": [
+        {
+          "name": "dice_rolling",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  105,
+                  99,
+                  101,
+                  95,
+                  114,
+                  111,
+                  108,
+                  108,
+                  105,
+                  110,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "reveal_roll",
+      "discriminator": [
+        120,
+        48,
+        105,
+        127,
+        82,
+        135,
+        199,
+        207
+      ],
+      "accounts": [
+        {
+          "name": "dice_rolling",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  105,
+                  99,
+                  101,
+                  95,
+                  114,
+                  111,
+                  108,
+                  108,
+                  105,
+                  110,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "randomness_account_data"
+        },
+        {
+          "name": "user",
+          "signer": true
+        }
+      ],
+      "args": [],
+      "returns": {
+        "defined": {
+          "name": "DiceResult"
+        }
+      }
+    }
+  ],
+  "accounts": [
+    {
+      "name": "DiceRollingState",
+      "discriminator": [
+        58,
+        178,
+        227,
+        255,
+        14,
+        3,
+        1,
+        143
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "Unauthorized",
+      "msg": "Unauthorized access attempt."
+    },
+    {
+      "code": 6001,
+      "name": "RandomnessAccountMismatch",
+      "msg": "Randomness account mismatch"
+    },
+    {
+      "code": 6002,
+      "name": "RandomnessExpired",
+      "msg": "Randomness expired"
+    },
+    {
+      "code": 6003,
+      "name": "RandomnessNotResolved",
+      "msg": "Randomness not resolved"
+    },
+    {
+      "code": 6004,
+      "name": "RandomnessAlreadyRevealed",
+      "msg": "Randomness already revealed"
+    },
+    {
+      "code": 6005,
+      "name": "DiceSizeTooLow",
+      "msg": "Dice size is too low"
+    },
+    {
+      "code": 6006,
+      "name": "RollingNotCommitted",
+      "msg": "Rolling not committed"
+    },
+    {
+      "code": 6007,
+      "name": "SuccessFloorTooHigh",
+      "msg": "Success floor is too high"
+    },
+    {
+      "code": 6008,
+      "name": "InvalidRandomnessAccount",
+      "msg": "Invalid randomness account"
+    },
+    {
+      "code": 6009,
+      "name": "InvalidRandomnessSeedSlot",
+      "msg": "Invalid randomness seed slot"
+    }
+  ],
+  "types": [
+    {
+      "name": "DiceResult",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "raw_result",
+            "type": "u8"
+          },
+          {
+            "name": "bonus",
+            "type": "u8"
+          },
+          {
+            "name": "success",
+            "type": "bool"
+          },
+          {
+            "name": "critical_success",
+            "type": "bool"
+          },
+          {
+            "name": "critical_failure",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DiceRollingState",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "allowed_user",
+            "type": "pubkey"
+          },
+          {
+            "name": "latest_roll_result",
+            "type": "u8"
+          },
+          {
+            "name": "randomness_account",
+            "type": "pubkey"
+          },
+          {
+            "name": "dice_size",
+            "type": "u8"
+          },
+          {
+            "name": "success_floor",
+            "type": "u8"
+          },
+          {
+            "name": "bonus",
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "commit_slot",
+            "type": "u64"
+          }
+        ]
+      }
+    }
+  ]
+}
