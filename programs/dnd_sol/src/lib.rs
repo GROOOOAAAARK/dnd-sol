@@ -6,6 +6,8 @@ use anchor_lang::{AnchorDeserialize, AnchorSerialize};
 pub mod attestation;
 pub mod character;
 pub mod error_codes;
+pub mod inventory;
+pub mod item;
 use character::{Character, CharacterAccount, CharacterAttributes};
 use error_codes::ErrorCodes;
 
