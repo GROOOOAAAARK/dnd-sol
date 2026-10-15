@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  anchor:
+  programs:
     if: github.event_name == 'push' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
     container:
@@ -49,7 +49,7 @@ jobs:
       - name: Run Anchor tests
         run: anchor test --skip-build -- --features localnet-mock
 
-  bun-build:
+  webapp:
     if: github.event_name == 'push' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
     container:
