@@ -26,6 +26,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Update rust toolchain
+        run: rustup update 1.99.0
+
       - name: Cache Anchor build artifacts
         uses: actions/cache@v4
         with:
