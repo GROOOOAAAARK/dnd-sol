@@ -1,4 +1,6 @@
 use crate::error_codes::ErrorCodes;
+use crate::inventory::InventoryDelta;
+use crate::item::{ItemCategory, ItemEffect};
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::{
     keccak,
@@ -6,41 +8,6 @@ use anchor_lang::solana_program::{
 };
 
 pub const TICKET_VERSION: u8 = 1;
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq, Eq)]
-pub enum ItemCategory {
-    Weapon,
-    Armor,
-    Consumable,
-    Commodity,
-    SpellComponent,
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq, Eq)]
-pub enum StatModifierTarget {
-    None,
-    Strength,
-    Dexterity,
-    Constitution,
-    Intelligence,
-    Wisdom,
-    Charisma,
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq, Eq)]
-pub struct ItemEffect {
-    pub damage_bonus: u16,
-    pub armor_bonus: u16,
-    pub stat_modifier_target: StatModifierTarget,
-    pub stat_modifier_amount: i8,
-    pub heal_amount: u16,
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq, Eq)]
-pub struct InventoryDelta {
-    pub item_id: u32,
-    pub quantity_delta: i32,
-}
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq, Eq)]
 pub struct EncounterTicket {
