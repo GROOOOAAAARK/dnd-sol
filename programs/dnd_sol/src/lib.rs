@@ -103,7 +103,7 @@ pub struct CreateCharacter<'info> {
         space = 8 + CharacterAccount::SPACE,
         seeds = [b"character", player.key().as_ref(), name.as_bytes()],
         bump,
-        constraint = name.as_bytes().len() <= CharacterAttributes::MAX_NAME_LEN @ ErrorCode::NameTooLong
+        constraint = name.as_bytes().len() <= CharacterAttributes::MAX_NAME_LEN @ ErrorCodes::NameTooLong
     )]
     pub character: Account<'info, CharacterAccount>,
 
