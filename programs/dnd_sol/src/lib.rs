@@ -16,7 +16,13 @@ pub mod dnd_sol {
     use super::*;
 
     pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
+        ctx.accounts.config.authority = ctx.accounts.payer.key();
         msg!("Welcome to the world of DnD Sol: {:?}", ctx.program_id);
+        Ok(())
+    }
+
+    pub fn set_attester(ctx: Context<SetAttester>, new_attester: [u8; 64]) -> Result<()> {
+        ctx.accounts.config.attester = new_attester;
         Ok(())
     }
 
@@ -83,13 +89,42 @@ pub mod dnd_sol {
     }
 }
 
+#[account]
+pub struct ProgramConfig {
+    pub authority: Pubkey,
+    pub attester: [u8; 64],
+}
+
+impl ProgramConfig {
+    pub const SEED: &'static [u8] = b"config";
+    pub const SPACE: usize = 32 + 64;
+}
+
 #[derive(Accounts)]
 pub struct Initialize<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
 
+    #[account(
+        init,
+        payer = payer,
+        space = 8 + ProgramConfig::SPACE,
+        seeds = [ProgramConfig::SEED],
+        bump,
+    )]
+    pub config: Account<'info, ProgramConfig>,
+
     pub system_program: Program<'info, System>,
 }
+
+#[derive(Accounts)]
+pub struct SetAttester<'info> {
+    pub authority: Signer<'info>,
+
+    #[account(mut, has_one = authority, seeds = [ProgramConfig::SEED], bump)]
+    pub config: Account<'info, ProgramConfig>,
+}
+
 
 #[derive(Accounts)]
 #[instruction(name: String)]
