@@ -48,7 +48,7 @@ jobs:
     if: github.event_name == 'push' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
     container:
-      image: oven/bun:1.2.3
+      image: oven/bun:1.4-alpine
     steps:
       - name: Checkout
         uses: actions/checkout@v4
