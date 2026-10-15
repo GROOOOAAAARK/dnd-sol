@@ -48,10 +48,16 @@ jobs:
     if: github.event_name == 'push' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
     container:
-      image: oven/bun:1.4-alpine
+      image: oven/bun:1.4-debian
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Install native build toolchain
+        run: |
+          apt-get update -qq
+          apt-get install -qq -y --no-install-recommends \
+            python3 make g++ libusb-1.0-0-dev libudev-dev pkg-config
 
       - name: Cache Bun dependencies
         uses: actions/cache@v4
