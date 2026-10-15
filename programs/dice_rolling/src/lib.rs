@@ -1,7 +1,8 @@
 use anchor_lang::prelude::*;
 #[cfg(not(feature = "localnet-mock"))]
 use switchboard_on_demand::RandomnessAccountData;
-
+pub mod error_codes;
+use error_codes::ErrorCodes;
 declare_id!("LTwGJmVKw2FkgByX2JehTkS2AqddnniuA2jyV4zZzwv");
 
 #[program]
@@ -28,7 +29,7 @@ pub mod dice_rolling {
     ) -> Result<bool> {
         let rolling_committed = DiceRollingState::commit(ctx, dice_size, success_floor, bonus)?;
         if !rolling_committed {
-            return Err(ErrorCode::RollingNotCommitted.into());
+            return Err(ErrorCodes::RollingNotCommitted.into());
         }
         Ok(rolling_committed)
     }
@@ -53,10 +54,10 @@ impl DiceRollingState {
         let dice_rolling = &mut ctx.accounts.dice_rolling;
 
         if dice_size < 2 {
-            return Err(ErrorCode::DiceSizeTooLow.into());
+            return Err(ErrorCodes::DiceSizeTooLow.into());
         }
         if success_floor as u16 > dice_size as u16 + bonus as u16 {
-            return Err(ErrorCode::SuccessFloorTooHigh.into());
+            return Err(ErrorCodes::SuccessFloorTooHigh.into());
         }
 
         #[cfg(not(feature = "localnet-mock"))]
@@ -64,15 +65,15 @@ impl DiceRollingState {
             let clock: Clock = Clock::get()?;
             let randomness_data =
                 RandomnessAccountData::parse(ctx.accounts.randomness_account_data.data.borrow())
-                    .map_err(|_| ErrorCode::InvalidRandomnessAccount)?;
+                    .map_err(|_| ErrorCodes::InvalidRandomnessAccount)?;
             let expected_seed_slot = clock
                 .slot
                 .checked_sub(1)
-                .ok_or(ErrorCode::InvalidRandomnessSeedSlot)?;
+                .ok_or(ErrorCodes::InvalidRandomnessSeedSlot)?;
             if randomness_data.seed_slot != expected_seed_slot {
                 msg!("seed_slot: {}", randomness_data.seed_slot);
                 msg!("slot: {}", clock.slot);
-                return Err(ErrorCode::InvalidRandomnessSeedSlot.into());
+                return Err(ErrorCodes::InvalidRandomnessSeedSlot.into());
             }
 
             dice_rolling.randomness_account = ctx.accounts.randomness_account_data.key();
@@ -101,20 +102,20 @@ impl DiceRollingState {
         #[cfg(not(feature = "localnet-mock"))]
         {
             if ctx.accounts.randomness_account_data.key() != dice_rolling.randomness_account {
-                return Err(ErrorCode::RandomnessAccountMismatch.into());
+                return Err(ErrorCodes::RandomnessAccountMismatch.into());
             }
 
             let randomness_data =
                 RandomnessAccountData::parse(ctx.accounts.randomness_account_data.data.borrow())
-                    .map_err(|_| ErrorCode::InvalidRandomnessAccount)?;
+                    .map_err(|_| ErrorCodes::InvalidRandomnessAccount)?;
 
             if randomness_data.seed_slot != dice_rolling.commit_slot {
-                return Err(ErrorCode::RandomnessExpired.into());
+                return Err(ErrorCodes::RandomnessExpired.into());
             }
 
             let revealed_random_value = randomness_data
                 .get_value(clock.slot)
-                .map_err(|_| ErrorCode::RandomnessNotResolved)?;
+                .map_err(|_| ErrorCodes::RandomnessNotResolved)?;
 
             let modulated_random_value = (revealed_random_value[0] % dice_rolling.dice_size) + 1;
 
@@ -133,7 +134,7 @@ impl DiceRollingState {
         #[cfg(feature = "localnet-mock")]
         {
             if dice_rolling.commit_slot == 0 {
-                return Err(ErrorCode::RollingNotCommitted.into());
+                return Err(ErrorCodes::RollingNotCommitted.into());
             }
 
             let mut hash_input = Vec::with_capacity(8 + 8 + 8 + 32);
@@ -193,7 +194,7 @@ pub struct DiceRoll<'info> {
         mut,
         seeds = [b"dice_rolling", user.key().as_ref()],
         bump = dice_rolling.bump,
-        constraint = dice_rolling.allowed_user == user.key() @ ErrorCode::Unauthorized
+        constraint = dice_rolling.allowed_user == user.key() @ ErrorCodes::Unauthorized
     )]
     pub dice_rolling: Account<'info, DiceRollingState>,
 
@@ -209,7 +210,7 @@ pub struct RevealRoll<'info> {
         mut,
         seeds = [b"dice_rolling", user.key().as_ref()],
         bump = dice_rolling.bump,
-        constraint = dice_rolling.allowed_user == user.key() @ ErrorCode::Unauthorized
+        constraint = dice_rolling.allowed_user == user.key() @ ErrorCodes::Unauthorized
     )]
     pub dice_rolling: Account<'info, DiceRollingState>,
 
@@ -239,30 +240,6 @@ pub struct DiceResult {
     pub success: bool,
     pub critical_success: bool,
     pub critical_failure: bool,
-}
-
-#[error_code]
-pub enum ErrorCode {
-    #[msg("Unauthorized access attempt.")]
-    Unauthorized,
-    #[msg("Randomness account mismatch")]
-    RandomnessAccountMismatch,
-    #[msg("Randomness expired")]
-    RandomnessExpired,
-    #[msg("Randomness not resolved")]
-    RandomnessNotResolved,
-    #[msg("Randomness already revealed")]
-    RandomnessAlreadyRevealed,
-    #[msg("Dice size is too low")]
-    DiceSizeTooLow,
-    #[msg("Rolling not committed")]
-    RollingNotCommitted,
-    #[msg("Success floor is too high")]
-    SuccessFloorTooHigh,
-    #[msg("Invalid randomness account")]
-    InvalidRandomnessAccount,
-    #[msg("Invalid randomness seed slot")]
-    InvalidRandomnessSeedSlot,
 }
 
 #[cfg(test)]
