@@ -38,14 +38,6 @@ jobs:
       - name: Set up Solana wallet
         run: solana-keygen new --no-bip39-passphrase --force --silent
 
-      - name: Install Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.2.3
-
-      - name: Install Node dependencies
-        run: bun install --frozen-lockfile
-
       - name: Build Anchor programs
         run: anchor build -- --features localnet-mock
 
