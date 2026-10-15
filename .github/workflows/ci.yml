@@ -19,23 +19,31 @@ jobs:
     if: github.event_name == 'push' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
     container:
-      image: solanafoundation/anchor:v1.2.1
-    env:
-      HOME: /root
+      image: rust:1.99.0
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Update rust toolchain
-        run: rustup update 1.99.0
+      - name: Install Solana CLI
+        run: |
+          curl -sSfL https://release.anza.xyz/v4.1.2/install -o /tmp/solana-install
+          sh /tmp/solana-install v4.1.2 --no-modify-path
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> "$GITHUB_PATH"
+
+      - name: Install Anchor CLI
+        run: |
+          curl -sSLo /usr/local/bin/anchor https://github.com/otter-sec/anchor/releases/download/v1.2.1/anchor-1.2.1-x86_64-unknown-linux-gnu
+          chmod +x /usr/local/bin/anchor
+          anchor --version
 
       - name: Cache Anchor build artifacts
         uses: actions/cache@v4
         with:
           path: |
             target
-            ~/.cargo/registry
-            ~/.cargo/git
+            /usr/local/cargo/registry
+            /usr/local/cargo/git
+            ~/.cache/solana
           key: anchor-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'programs/**/*.rs', 'programs/**/Cargo.toml') }}
           restore-keys: |
             anchor-${{ runner.os }}-
