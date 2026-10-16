@@ -63,7 +63,7 @@ pub mod dnd_sol {
         success_floor: u8,
         bonus: u8,
     ) -> Result<bool> {
-        let cpi_program = ctx.accounts.dice_rolling_program.to_account_info();
+        let cpi_program = ctx.accounts.dice_rolling_program.key();
         let cpi_accounts = dice_rolling::cpi::accounts::DiceRoll {
             dice_rolling: ctx.accounts.dice_rolling_state.to_account_info(),
             randomness_account_data: ctx.accounts.randomness_account_data.to_account_info(),
@@ -80,7 +80,7 @@ pub mod dnd_sol {
     }
 
     pub fn reveal_action_result(ctx: Context<CharacterScope>) -> Result<dice_rolling::DiceResult> {
-        let cpi_program = ctx.accounts.dice_rolling_program.to_account_info();
+        let cpi_program = ctx.accounts.dice_rolling_program.key();
         let cpi_accounts = dice_rolling::cpi::accounts::DiceRoll {
             dice_rolling: ctx.accounts.dice_rolling_state.to_account_info(),
             randomness_account_data: ctx.accounts.randomness_account_data.to_account_info(),
