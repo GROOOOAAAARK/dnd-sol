@@ -21,6 +21,8 @@ export enum CharacterRace {
   Dragonborn="dragonborn",
 }
 
+export type CharacterRaceValue = `${CharacterRace}`;
+
 export enum CharacterClass {
   Warrior="warrior",
   Thief="thief",
@@ -31,11 +33,13 @@ export enum CharacterClass {
   Druid="druid",
 }
 
+export type CharacterClassValue = `${CharacterClass}`;
+
 export interface Character {
   id?: string; // Account PubKey
   name: string;
-  character_class: CharacterClass;
-  race: CharacterRace;
+  character_class: CharacterClassValue;
+  race: CharacterRaceValue;
   stats: CharacterStats;
   level?: number;
   experience?: number;
