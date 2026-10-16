@@ -4,6 +4,11 @@ import {
   Prisma,
 } from "@prisma/client/index";
 import type { PrismaClient } from "@prisma/client/index";
+import {
+	type Prisma,
+	type AdventureCheckpoint as PrismaAdventureCheckpoint,
+	AdventureCheckpointStatus as PrismaAdventureCheckpointStatus,
+} from "@prisma/client/index";
 
 import type { AdventureCheckpoint } from "@/models/types";
 import { getPrismaClient } from "@/server/prisma/client";
