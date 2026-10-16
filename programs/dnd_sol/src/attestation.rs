@@ -2,10 +2,8 @@ use crate::error_codes::ErrorCodes;
 use crate::inventory::InventoryDelta;
 use crate::item::{ItemCategory, ItemEffect};
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::{
-    keccak,
-    secp256k1_recover::{secp256k1_recover, Secp256k1Pubkey},
-};
+use solana_keccak_hasher as keccak;
+use solana_secp256k1_recover::{secp256k1_recover, Secp256k1Pubkey};
 
 pub const TICKET_VERSION: u8 = 1;
 
@@ -107,8 +105,8 @@ mod tests {
             nonce: 1,
             expiry: 1_700_000_000,
         };
-        let bytes = ticket.try_to_vec().unwrap();
-        assert_eq!(EncounterTicket::try_from_slice(&bytes).unwrap(), ticket);
+        let bytes = borsh::to_vec(&ticket).unwrap();
+        assert_eq!(borsh::from_slice::<EncounterTicket>(&bytes).unwrap(), ticket);
     }
 
     #[test]
@@ -127,7 +125,7 @@ mod tests {
             nonce: 1,
             expiry: 1,
         };
-        let bytes = ticket.try_to_vec().unwrap();
+        let bytes = borsh::to_vec(&ticket).unwrap();
         let result = verify_attestation(&bytes, &[0u8; 64], &[1u8; 64]);
         assert!(result.is_err());
     }
