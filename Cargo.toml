@@ -16,6 +16,3 @@ codegen-units = 1
 
 [workspace.dependencies]
 tokio = { version = "1.41.1", features = ["full"] }
-
-[workspace.dev-dependencies]
-solana-program-test = "3.0.5"
