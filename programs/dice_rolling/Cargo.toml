@@ -22,7 +22,11 @@ localnet-mock = []
 
 [dependencies]
 anchor-lang = "1.2.1"
-switchboard-on-demand = "0.13.0"
+switchboard-on-demand = { version = "0.13.0", default-features = false, features = ["cpi", "solana-v3"] }
+solana-keccak-hasher = "3.1.0"
+
+[target.'cfg(target_os = "solana")'.dependencies]
+getrandom = { version = "0.2", features = ["custom"] }
 
 [dev-dependencies]
 solana-program-test = "3.0.2"
