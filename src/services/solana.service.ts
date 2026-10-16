@@ -231,20 +231,22 @@ export function useSolanaService() {
           return null
         }
 
-        const getEnumVariant = (enumObj: any): string => {
-          if (typeof enumObj === "string") return enumObj
+        const getEnumVariant = <T extends string>(enumObj: unknown): T => {
+          if (typeof enumObj === "string") return enumObj as T
           if (typeof enumObj === "object" && enumObj !== null) {
             const keys = Object.keys(enumObj)
-            return keys[0] || ""
+            return (keys[0] ?? "") as T
           }
-          return String(enumObj)
+          return String(enumObj) as T
         }
 
         const character: Character = {
           id: accountInfo.pubkey.toString(),
           name: String(decoded.character.attributes.name),
-          race: getEnumVariant(decoded.character.attributes.race),
-          character_class: getEnumVariant(decoded.character.attributes.class),
+          race: getEnumVariant<CharacterRaceValue>(decoded.character.attributes.race),
+          character_class: getEnumVariant<CharacterClassValue>(
+            decoded.character.attributes.class,
+          ),
           level: Number(decoded.character.attributes.level),
           experience: Number(decoded.character.attributes.experience),
           stats: {
