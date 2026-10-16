@@ -2,7 +2,7 @@
 
 import { BorshAccountsCoder, BorshCoder, Program, utils } from "@coral-xyz/anchor"
 import { PublicKey, SystemProgram, SYSVAR_SLOT_HASHES_PUBKEY, Transaction } from "@solana/web3.js"
-import type { Character, DiceResult } from "@/models/types"
+import type { Character, CharacterClassValue, CharacterRaceValue, DiceResult } from "@/models/types"
 import {
   anchorDiceResultToModel,
   anchorDiceRollingStateToDiceResult,
