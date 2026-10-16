@@ -85,7 +85,6 @@ jobs:
 
       - name: Prepare IDL artifacts for Next.js build
         run: |
-          mkdir -p target/idl
           cp target/idl/* src/idl/
 
       - name: Build app
