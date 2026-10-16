@@ -1,3 +1,5 @@
+#![allow(unexpected_cfgs)]
+
 use anchor_lang::prelude::*;
 #[cfg(not(feature = "localnet-mock"))]
 use switchboard_on_demand::RandomnessAccountData;
@@ -143,8 +145,8 @@ impl DiceRollingState {
             hash_input.extend_from_slice(&clock.unix_timestamp.to_le_bytes());
             hash_input.extend_from_slice(dice_rolling.key().as_ref());
 
-            let hash = anchor_lang::solana_program::keccak::hash(&hash_input);
-            let modulated_random_value = (hash.0[0] % dice_rolling.dice_size) + 1;
+            let hash = solana_keccak_hasher::hash(&hash_input);
+            let modulated_random_value = (hash.to_bytes()[0] % dice_rolling.dice_size) + 1;
 
             let dice_result = Self::_build_dice_result(
                 modulated_random_value,
