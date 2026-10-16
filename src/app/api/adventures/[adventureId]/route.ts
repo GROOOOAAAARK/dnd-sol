@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server"
 import { mockAdventures } from "@/assets/mocks/adventures"
 
-export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
+export async function GET(_: Request, props: { params: Promise<{ adventureId: string }> }) {
   const params = await props.params;
-  const id = params.id
+  const adventureId = params.adventureId
 
   // Simulate network delay
   await new Promise((resolve) => setTimeout(resolve, 800))
 
-  const adventure = mockAdventures.find((adv) => adv.id === id)
+  const adventure = mockAdventures.find((adv) => adv.id === adventureId)
 
   if (!adventure) {
     return NextResponse.json({ error: "Adventure not found" }, { status: 404 })
