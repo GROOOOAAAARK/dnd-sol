@@ -11,24 +11,24 @@ export interface CharacterStats {
 }
 
 export enum CharacterRace {
-  Human,
-  Elf,
-  Dwarf,
-  Halfling,
-  Tiefling,
-  Githyanki,
-  Orc,
-  Dragonborn,
+  Human="human",
+  Elf="elf",
+  Dwarf="dwarf",
+  Halfling="halfling",
+  Tiefling="tiefling",
+  Githyanki="githyanki",
+  Orc="orc",
+  Dragonborn="dragonborn",
 }
 
 export enum CharacterClass {
-  Warrior,
-  Thief,
-  Barbarian,
-  Monk,
-  Wizard,
-  Sorcerer,
-  Druid,
+  Warrior="warrior",
+  Thief="thief",
+  Barbarian="barbarian",
+  Monk="monk",
+  Wizard="wizard",
+  Sorcerer="sorcerer",
+  Druid="druid",
 }
 
 export interface Character {
