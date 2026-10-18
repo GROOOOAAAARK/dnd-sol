@@ -83,6 +83,39 @@ export interface Character {
   experience?: number;
 }
 
+export interface MonsterStats extends CharacterStats {
+  hit_points: number;
+  armor_class: number;
+}
+
+export interface MoneyCount {
+  PP: number;
+  GP: number;
+  EP: number;
+  SP: number;
+  CP: number;
+}
+
+export interface ItemLoot {
+		item_id: string;
+		loot_chance: number; // 0..1
+	}
+
+export interface MonsterLoot {
+  xp: number;
+  items?: ItemLoot[];
+  money?: MoneyCount;
+}
+
+export interface Monster {
+  id?: string;
+  name: string;
+  monster_stats: MonsterStats;
+  loot: MonsterLoot;
+  attacks: Attack[];
+}
+
+
 // Adventure types
 export interface Adventure {
   id: string;
