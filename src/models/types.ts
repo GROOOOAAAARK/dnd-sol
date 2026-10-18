@@ -1,4 +1,40 @@
 // TODO: Split in different files
+import type { DiceType } from "@/lib/diceTypes";
+
+export enum DamageType {
+  Acid = "acid",
+  Bludgeoning = "bludgeoning",
+  Cold = "cold",
+  Fire = "fire",
+  Force = "force",
+  Lightning = "lightning",
+  Necrotic = "necrotic",
+  Piercing = "piercing",
+  Poison = "poison",
+  Psychic = "psychic",
+  Radiant = "radiant",
+  Slashing = "slashing",
+  Thunder = "thunder",
+}
+
+export interface DiceRollInfos {
+  die: DiceType;
+  num_die: number;
+}
+
+export enum AttackType {
+  Hit = "hit",
+  Throw = "throw",
+  Spell = "spell",
+}
+
+export interface Attack {
+  id?: string;
+	name: string;
+	dice_rolls: DiceRollInfos[];
+  damage_type: DamageType;
+  type: AttackType;
+}
 
 // Character types
 export interface CharacterStats {
@@ -8,6 +44,8 @@ export interface CharacterStats {
   intelligence: number;
   wisdom: number;
   charisma: number;
+  health?: number;
+  hit_points?: number;
 }
 
 export enum CharacterRace {
