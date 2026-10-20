@@ -129,6 +129,7 @@ export interface Monster {
   monster_stats: MonsterStats;
   loot: MonsterLoot;
   attacks: Attack[];
+  damage_modifiers: DamageModifier[];
 }
 
 
