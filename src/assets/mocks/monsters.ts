@@ -18,15 +18,32 @@ const Mimic: Monster = {
 	},
 	attacks: [
 		{
-			name: "mimic bite",
-			type: AttackType.Hit,
-			damage_type: DamageType.Piercing,
-			dice_rolls: [
-				{
-					die: DiceType.D6,
-					num_die: 2,
-				},
-			],
+			name: "bite",
+			type: AttackType.Melee,
+      damages: [
+        {
+       		damage_type: DamageType.Piercing,
+          damage_bonus: 3,
+          dice_roll: {
+            die: DiceType.D8,
+            num_die: 2,
+          },
+        }
+			]
+		},
+    {
+      name: "pseudopod",
+      type: AttackType.Melee,
+      damages: [
+        {
+          damage_type: DamageType.Bludgeoning,
+          damage_bonus: 3,
+          dice_roll: {
+            die: DiceType.D8,
+            num_die: 1,
+          },
+        },
+      ],
 		},
   ],
   damage_modifiers: [
