@@ -1,5 +1,5 @@
 use anchor_lang::error::Error;
-use anchor_lang::prelude::{borsh, Account, Pubkey, Signer};
+use anchor_lang::prelude::{Account, Pubkey, Signer};
 use anchor_lang::{account, AnchorDeserialize, AnchorSerialize, Discriminator, Key};
 
 use crate::error_codes::ErrorCodes;
