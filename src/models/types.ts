@@ -33,6 +33,12 @@ export interface DamageModifier {
   damages: DamageType[];
 }
 
+export interface Damage {
+  dice_roll: DiceRollInfos;
+  damage_type: DamageType;
+  damage_bonus?: number;
+}
+
 export interface DiceRollInfos {
   die: DiceType;
   num_die: number;
