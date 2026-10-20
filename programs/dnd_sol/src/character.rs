@@ -89,7 +89,7 @@ pub struct CharacterStats {
     pub wisdom: u8,
     pub charisma: u8,
     pub health: u16,
-    pub max_health: u16,
+    pub hit_points: u16,
 }
 
 impl CharacterStats {
@@ -142,7 +142,7 @@ impl Character {
             wisdom,
             charisma,
             health: 10 + constitution as u16,
-            max_health: 10 + constitution as u16,
+            hit_points: 10 + constitution as u16,
         };
 
         character.attributes = attributes;
