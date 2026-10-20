@@ -17,6 +17,17 @@ export enum DamageType {
   Thunder = "thunder",
 }
 
+// Materializing resistances and weaknesses; this modifier will apply on damages
+export enum DamageModifierType {
+  Immunity = 0,
+  VeryLow = 0.5,
+  Low = 0.75,
+  // Default value => Neutral
+  Neutral = 1,
+  High = 1.5,
+  VeryHigh = 2,
+}
+
 export interface DiceRollInfos {
   die: DiceType;
   num_die: number;
