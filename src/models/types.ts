@@ -39,7 +39,7 @@ export interface DiceRollInfos {
 }
 
 export enum AttackType {
-  Hit = "hit",
+  Melee = "Melee",
   Throw = "throw",
   Spell = "spell",
 }
