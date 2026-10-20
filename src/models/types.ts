@@ -28,6 +28,11 @@ export enum DamageModifierType {
   VeryHigh = 2,
 }
 
+export interface DamageModifier {
+  type: DamageModifierType;
+  damages: DamageType[];
+}
+
 export interface DiceRollInfos {
   die: DiceType;
   num_die: number;
