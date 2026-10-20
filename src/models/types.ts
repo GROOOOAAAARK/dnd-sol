@@ -53,8 +53,7 @@ export enum AttackType {
 export interface Attack {
   id?: string;
 	name: string;
-	dice_rolls: DiceRollInfos[];
-  damage_type: DamageType;
+  damages: Damage[];
   type: AttackType;
 }
 
