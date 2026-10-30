@@ -5,10 +5,13 @@ use anchor_lang::{AnchorDeserialize, AnchorSerialize};
 
 pub mod attestation;
 pub mod character;
+pub mod combat;
 pub mod error_codes;
 pub mod inventory;
 pub mod item;
+use attestation::{verify_ticket, EncounterTicket};
 use character::{Character, CharacterAccount, CharacterAttributes};
+use combat::{CombatRoundResult, CombatSession, CombatStatus, COMBAT_SEED};
 use error_codes::ErrorCodes;
 
 declare_id!("5XQUKVykhN5D3WkJ1MdsRxaJDmEszjRzhje3e6TjF4Wd");
@@ -89,6 +92,71 @@ pub mod dnd_sol {
 
         Ok(dice_rolling::cpi::reveal_roll(CpiContext::new(cpi_program, cpi_accounts))?.get())
     }
+
+    pub fn start_combat(
+        ctx: Context<StartCombat>,
+        ticket_bytes: Vec<u8>,
+        signature: [u8; 64],
+    ) -> Result<()> {
+        let ticket = EncounterTicket::try_from_slice(&ticket_bytes)?;
+        ticket.validate_limits()?;
+        verify_ticket(
+            &ticket_bytes,
+            &signature,
+            &ctx.accounts.config.attester,
+            ticket.version,
+            ticket.expiry,
+        )?;
+
+        let character_account = &ctx.accounts.character;
+        require_keys_eq!(
+            ticket.character,
+            character_account.key(),
+            ErrorCodes::InvalidAttestation
+        );
+
+        let session = &mut ctx.accounts.session;
+        require!(
+            ticket.nonce > session.last_nonce,
+            ErrorCodes::StaleEncounterTicket
+        );
+
+        session.character = character_account.key();
+        session.status = CombatStatus::InProgress;
+        session.round = 1;
+        session.commit_pending = false;
+        session.monster_id = ticket.monster_id;
+        session.monster_hp = ticket.hit_points;
+        session.character_hp = character_account.character.stats.health;
+        session.ticket_hash = solana_keccak_hasher::hash(&ticket_bytes).to_bytes();
+        session.last_nonce = ticket.nonce;
+        session.bump = ctx.bumps.session;
+        Ok(())
+    }
+
+    pub fn combat_commit(ctx: Context<CombatScope>) -> Result<()> {
+        let session = &mut ctx.accounts.session;
+        require!(
+            session.status == CombatStatus::InProgress,
+            ErrorCodes::CombatNotInProgress
+        );
+        require!(!session.commit_pending, ErrorCodes::CombatCommitPending);
+
+        let cpi_accounts = dice_rolling::cpi::accounts::DiceRoll {
+            dice_rolling: ctx.accounts.dice_rolling_state.to_account_info(),
+            randomness_account_data: ctx.accounts.randomness_account_data.to_account_info(),
+            user: ctx.accounts.player.to_account_info(),
+        };
+        dice_rolling::cpi::commit_roll(
+            CpiContext::new(ctx.accounts.dice_rolling_program.key(), cpi_accounts),
+            combat::D20,
+            combat::D20,
+            0,
+        )?;
+
+        session.commit_pending = true;
+        Ok(())
+    }
 }
 
 #[account]
@@ -164,4 +232,27 @@ pub struct CharacterScope<'info> {
     pub randomness_account_data: UncheckedAccount<'info>,
 
     pub dice_rolling_program: Program<'info, dice_rolling::program::DiceRolling>,
+}
+
+#[derive(Accounts)]
+pub struct StartCombat<'info> {
+    #[account(mut)]
+    pub player: Signer<'info>,
+
+    #[account(seeds = [ProgramConfig::SEED], bump)]
+    pub config: Account<'info, ProgramConfig>,
+
+    #[account(mut, has_one = player)]
+    pub character: Account<'info, CharacterAccount>,
+
+    #[account(
+        init_if_needed,
+        payer = player,
+        space = 8 + CombatSession::SPACE,
+        seeds = [COMBAT_SEED, character.key().as_ref()],
+        bump,
+    )]
+    pub session: Account<'info, CombatSession>,
+
+    pub system_program: Program<'info, System>,
 }
