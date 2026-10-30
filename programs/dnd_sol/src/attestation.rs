@@ -118,6 +118,7 @@ pub fn verify_ticket(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::combat::DamageRoll;
 
     #[test]
     fn ticket_borsh_round_trips() {
@@ -125,16 +126,25 @@ mod tests {
             version: TICKET_VERSION,
             character: Pubkey::new_from_array([7u8; 32]),
             encounter_id: 42,
-            monster_id: 9,
+            monster_id: [0u8; MONSTER_ID_LEN],
             ac: 15,
-            max_hp: 30,
-            die: 20,
-            modifier: -2,
+            hit_points: 30,
+            attacks: vec![Attack {
+                to_hit: Some(5),
+                damages: vec![DamageRoll {
+                    die: 8,
+                    num_die: 2,
+                    damage_bonus: 3,
+                }],
+            }],
             nonce: 1,
             expiry: 1_700_000_000,
         };
         let bytes = borsh::to_vec(&ticket).unwrap();
-        assert_eq!(borsh::from_slice::<EncounterTicket>(&bytes).unwrap(), ticket);
+        assert_eq!(
+            borsh::from_slice::<EncounterTicket>(&bytes).unwrap(),
+            ticket
+        );
     }
 
     #[test]
@@ -156,5 +166,61 @@ mod tests {
         let bytes = borsh::to_vec(&ticket).unwrap();
         let result = verify_attestation(&bytes, &[0u8; 64], &[1u8; 64]);
         assert!(result.is_err());
+    }
+
+    fn golden_ticket() -> EncounterTicket {
+        let mut monster_id = [0u8; MONSTER_ID_LEN];
+        monster_id.copy_from_slice(b"gVJhLCg8hvsMR79w9lqf4");
+        EncounterTicket {
+            version: TICKET_VERSION,
+            character: Pubkey::new_from_array([7u8; 32]),
+            encounter_id: 42,
+            monster_id,
+            ac: 12,
+            hit_points: 58,
+            attacks: vec![
+                Attack {
+                    to_hit: Some(5),
+                    damages: vec![DamageRoll {
+                        die: 8,
+                        num_die: 2,
+                        damage_bonus: 3,
+                    }],
+                },
+                Attack {
+                    to_hit: Some(3),
+                    damages: vec![DamageRoll {
+                        die: 6,
+                        num_die: 1,
+                        damage_bonus: 0,
+                    }],
+                },
+            ],
+            nonce: 1000,
+            expiry: 1_700_000_000,
+        }
+    }
+
+    fn to_hex(bytes: &[u8]) -> String {
+        bytes.iter().map(|byte| format!("{:02x}", byte)).collect()
+    }
+
+    /// Frozen contract: the TS encoder must produce these exact bytes for the
+    /// same ticket. The fixture is shared at `tests/fixtures/`.
+    #[test]
+    fn golden_vector_matches_fixture() {
+        const FIXTURE: &str = include_str!("../../../tests/fixtures/encounter-ticket-golden.json");
+        const EXPECTED_BYTES: &str = "0107070707070707070707070707070707070707070707070707070707070707072a0000000000000067564a684c4367386876734d52373977396c7166340c3a0002000000050100000008020300fd0100000006010000e80300000000000000f1536500000000";
+        const EXPECTED_DIGEST: &str =
+            "a10518c96f9105f7971bb606ef46c4aad3c416a659edd67aa3083561832e3fe6";
+
+        let bytes = borsh::to_vec(&golden_ticket()).unwrap();
+        let digest = keccak::hash(&bytes).to_bytes();
+
+        assert_eq!(to_hex(&bytes), EXPECTED_BYTES);
+        assert_eq!(to_hex(&digest), EXPECTED_DIGEST);
+        // Guard against the fixture drifting from the constants above.
+        assert!(FIXTURE.contains(EXPECTED_BYTES));
+        assert!(FIXTURE.contains(EXPECTED_DIGEST));
     }
 }
