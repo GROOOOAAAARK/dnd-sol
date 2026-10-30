@@ -157,6 +157,68 @@ pub mod dnd_sol {
         session.commit_pending = true;
         Ok(())
     }
+
+    pub fn combat_reveal(
+        ctx: Context<CombatScope>,
+        ticket_bytes: Vec<u8>,
+    ) -> Result<CombatRoundResult> {
+        require!(
+            ctx.accounts.session.commit_pending,
+            ErrorCodes::CombatCommitMissing
+        );
+        // The ticket was attester-verified at `start_combat`; matching the hash
+        // proves the same bytes, so the monster's attacks were fixed before the
+        // dice were revealed.
+        require!(
+            solana_keccak_hasher::hash(&ticket_bytes).to_bytes()
+                == ctx.accounts.session.ticket_hash,
+            ErrorCodes::EncounterTicketMismatch
+        );
+
+        let cpi_accounts = dice_rolling::cpi::accounts::DiceRoll {
+            dice_rolling: ctx.accounts.dice_rolling_state.to_account_info(),
+            randomness_account_data: ctx.accounts.randomness_account_data.to_account_info(),
+            user: ctx.accounts.player.to_account_info(),
+        };
+        let rolled = dice_rolling::cpi::reveal_roll_raw(CpiContext::new(
+            ctx.accounts.dice_rolling_program.key(),
+            cpi_accounts,
+        ))?
+        .get();
+
+        let ticket = EncounterTicket::try_from_slice(&ticket_bytes)?;
+        let character = &ctx.accounts.character.character;
+        let player_die = combat::damage_die(&character.attributes.class);
+        let attack_bonus = combat::attack_bonus(
+            &character.attributes.class,
+            character.attributes.level,
+            &character.stats,
+        );
+        let player_ac = combat::armor_class(&character.attributes.class, &character.stats);
+
+        let session = &mut ctx.accounts.session;
+        let outcome = combat::resolve_round(combat::RoundInput {
+            round: session.round,
+            player_d20: rolled.result.raw_result,
+            raw: rolled.raw,
+            character: session.character,
+            encounter_id: ticket.encounter_id,
+            monster_ac: ticket.ac,
+            monster_hp: session.monster_hp,
+            attacks: &ticket.attacks,
+            player_ac,
+            character_hp: session.character_hp,
+            attack_bonus,
+            player_die,
+        });
+
+        session.commit_pending = false;
+        session.monster_hp = outcome.monster_hp;
+        session.character_hp = outcome.character_hp;
+        session.status = outcome.status;
+        session.round = outcome.next_round;
+        Ok(outcome.result)
+    }
 }
 
 #[account]
@@ -255,4 +317,29 @@ pub struct StartCombat<'info> {
     pub session: Account<'info, CombatSession>,
 
     pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct CombatScope<'info> {
+    #[account(mut)]
+    pub player: Signer<'info>,
+
+    #[account(has_one = player)]
+    pub character: Account<'info, CharacterAccount>,
+
+    #[account(
+        mut,
+        seeds = [COMBAT_SEED, character.key().as_ref()],
+        bump = session.bump,
+    )]
+    pub session: Account<'info, CombatSession>,
+
+    /// CHECK: checked by the dice_rolling program
+    #[account(mut)]
+    pub dice_rolling_state: UncheckedAccount<'info>,
+
+    /// CHECK: checked by the dice_rolling program
+    pub randomness_account_data: UncheckedAccount<'info>,
+
+    pub dice_rolling_program: Program<'info, dice_rolling::program::DiceRolling>,
 }
