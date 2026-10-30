@@ -310,3 +310,181 @@ pub fn resolve_round(input: RoundInput) -> RoundOutcome {
         next_round,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn stats() -> CharacterStats {
+        CharacterStats {
+            strength: 10,
+            dexterity: 14,
+            constitution: 10,
+            intelligence: 10,
+            wisdom: 10,
+            charisma: 10,
+            health: 20,
+            hit_points: 20,
+        }
+    }
+
+    fn attack(to_hit: Option<i8>, die: u8, num_die: u8, damage_bonus: i16) -> Attack {
+        Attack {
+            to_hit,
+            damages: vec![DamageRoll {
+                die,
+                num_die,
+                damage_bonus,
+            }],
+        }
+    }
+
+    fn round_input<'a>(attacks: &'a [Attack]) -> RoundInput<'a> {
+        RoundInput {
+            round: 1,
+            player_d20: 10,
+            raw: [7u8; 32],
+            character: Pubkey::new_from_array([3u8; 32]),
+            encounter_id: 1,
+            monster_ac: 12,
+            monster_hp: 100,
+            attacks,
+            player_ac: 12,
+            character_hp: 100,
+            attack_bonus: 5,
+            player_die: 8,
+        }
+    }
+
+    #[test]
+    fn ability_modifier_floors_negatives() {
+        assert_eq!(ability_modifier(10), 0);
+        assert_eq!(ability_modifier(14), 2);
+        assert_eq!(ability_modifier(3), -4); // floor(-3.5)
+        assert_eq!(ability_modifier(1), -5);
+    }
+
+    #[test]
+    fn armor_class_is_class_dependent_and_unarmored() {
+        let mut s = stats();
+        s.dexterity = 14; // +2
+        s.constitution = 16; // +3
+        s.wisdom = 18; // +4
+        assert_eq!(armor_class(&CharacterClass::Warrior, &s), 12);
+        assert_eq!(armor_class(&CharacterClass::Barbarian, &s), 15);
+        assert_eq!(armor_class(&CharacterClass::Monk, &s), 16);
+    }
+
+    #[test]
+    fn proficiency_and_damage_die_follow_class_tables() {
+        assert_eq!(proficiency(1), 2);
+        assert_eq!(proficiency(5), 3);
+        assert_eq!(damage_die(&CharacterClass::Warrior), 8);
+        assert_eq!(damage_die(&CharacterClass::Thief), 6);
+        assert_eq!(damage_die(&CharacterClass::Wizard), 4);
+    }
+
+    #[test]
+    fn lanes_are_deterministic_and_in_bounds() {
+        let key = Pubkey::new_from_array([1u8; 32]);
+        assert_eq!(
+            derive_player_damage_roll(&[9u8; 32], &key, 5, 2, 8),
+            derive_player_damage_roll(&[9u8; 32], &key, 5, 2, 8)
+        );
+        assert!((1..=8).contains(&derive_player_damage_roll(&[9u8; 32], &key, 5, 2, 8)));
+        assert!((1..=20).contains(&derive_monster_d20(&[9u8; 32], 5, 2, 0)));
+    }
+
+    #[test]
+    fn every_die_gets_a_distinct_lane() {
+        let raw = [3u8; 32];
+        let first = derive_monster_die(&raw, 1, 1, 0, 0, 0, 6);
+        let second = derive_monster_die(&raw, 1, 1, 0, 0, 1, 6);
+        assert_ne!(first, second);
+        assert!((1..=6).contains(&first));
+    }
+
+    #[test]
+    fn round_continues_when_nobody_dies() {
+        let attacks = [attack(Some(0), 6, 1, 0)];
+        let outcome = resolve_round(round_input(&attacks));
+        assert_eq!(outcome.status, CombatStatus::InProgress);
+        assert_eq!(outcome.next_round, 2);
+        assert!(outcome.result.player_hit);
+        assert_eq!(outcome.result.monster_attacks.len(), 1);
+    }
+
+    #[test]
+    fn natural_one_auto_misses() {
+        let attacks = [attack(Some(0), 6, 1, 0)];
+        let mut input = round_input(&attacks);
+        input.player_d20 = 1;
+        input.attack_bonus = 100; // still misses
+        let outcome = resolve_round(input);
+        assert!(!outcome.result.player_hit);
+        assert_eq!(outcome.result.player_damage, 0);
+    }
+
+    #[test]
+    fn natural_twenty_doubles_weapon_damage() {
+        let attacks = [attack(Some(0), 6, 1, 0)];
+        let mut input = round_input(&attacks);
+        input.player_d20 = 20;
+        let base = derive_player_damage_roll(
+            &input.raw,
+            &input.character,
+            input.encounter_id,
+            input.round,
+            input.player_die,
+        );
+        let outcome = resolve_round(input);
+        assert!(outcome.result.player_crit);
+        assert_eq!(outcome.result.player_damage, base as u16 * 2);
+    }
+
+    #[test]
+    fn multi_die_attack_sums_dice_and_bonus() {
+        let attacks = [attack(Some(0), 6, 3, 5)];
+        let outcome = resolve_round(round_input(&attacks));
+        let expected = (0..3).fold(5u16, |sum, die_index| {
+            sum + derive_monster_die(&[7u8; 32], 1, 1, 0, 0, die_index, 6) as u16
+        });
+        assert!(outcome.result.monster_hit);
+        assert_eq!(outcome.result.monster_damage, expected);
+    }
+
+    #[test]
+    fn killing_the_monster_is_victory() {
+        let attacks = [attack(Some(-100), 6, 1, 0)]; // monster cannot hurt the player
+        let mut input = round_input(&attacks);
+        input.monster_hp = 1;
+        input.attack_bonus = 100;
+        let outcome = resolve_round(input);
+        assert_eq!(outcome.status, CombatStatus::Victory);
+        assert_eq!(outcome.monster_hp, 0);
+    }
+
+    #[test]
+    fn dropped_character_is_defeat_pinned_at_one() {
+        let attacks = [attack(Some(100), 6, 1, 0)];
+        let mut input = round_input(&attacks);
+        input.player_d20 = 1; // no player damage
+        input.character_hp = 1;
+        input.player_ac = 0;
+        let outcome = resolve_round(input);
+        assert_eq!(outcome.status, CombatStatus::Defeat);
+        assert_eq!(outcome.character_hp, 1);
+    }
+
+    #[test]
+    fn mutual_kill_is_draw() {
+        let attacks = [attack(Some(100), 6, 1, 0)];
+        let mut input = round_input(&attacks);
+        input.monster_hp = 1;
+        input.attack_bonus = 100;
+        input.character_hp = 1;
+        input.player_ac = 0;
+        let outcome = resolve_round(input);
+        assert_eq!(outcome.status, CombatStatus::Draw);
+    }
+}
