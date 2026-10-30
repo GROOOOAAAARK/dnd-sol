@@ -1,3 +1,4 @@
+use crate::combat::{Attack, MONSTER_ID_LEN};
 use crate::error_codes::ErrorCodes;
 use crate::inventory::InventoryDelta;
 use crate::item::{ItemCategory, ItemEffect};
@@ -6,6 +7,11 @@ use solana_keccak_hasher as keccak;
 use solana_secp256k1_recover::{secp256k1_recover, Secp256k1Pubkey};
 
 pub const TICKET_VERSION: u8 = 1;
+
+/// Bounds kept so a ticket cannot blow up the per-round lane derivation.
+pub const MAX_MONSTER_ATTACKS: usize = 2;
+pub const MAX_ROLL_GROUPS_PER_ATTACK: usize = 4;
+pub const MAX_DICE_PER_ROLL_GROUP: usize = 12;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq, Eq)]
 pub struct EncounterTicket {
