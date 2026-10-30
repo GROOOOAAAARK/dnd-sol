@@ -39,6 +39,10 @@ pub mod dice_rolling {
     pub fn reveal_roll(ctx: Context<DiceRoll>) -> Result<DiceResult> {
         DiceRollingState::reveal(ctx)
     }
+
+    pub fn reveal_roll_raw(ctx: Context<DiceRoll>) -> Result<DiceResultRaw> {
+        DiceRollingState::reveal_raw(ctx)
+    }
 }
 
 impl DiceRollingState {
@@ -98,6 +102,33 @@ impl DiceRollingState {
     }
 
     fn reveal(ctx: Context<DiceRoll>) -> Result<DiceResult> {
+        let mut ctx = ctx;
+        let (_, modulated_random_value) = Self::_reveal(&mut ctx)?;
+        let dice_rolling = &ctx.accounts.dice_rolling;
+        Self::_build_dice_result(
+            modulated_random_value,
+            dice_rolling.bonus,
+            dice_rolling.success_floor,
+            dice_rolling.dice_size,
+        )
+    }
+
+    fn reveal_raw(ctx: Context<DiceRoll>) -> Result<DiceResultRaw> {
+        let mut ctx = ctx;
+        let (raw, modulated_random_value) = Self::_reveal(&mut ctx)?;
+        let dice_rolling = &ctx.accounts.dice_rolling;
+        let result = Self::_build_dice_result(
+            modulated_random_value,
+            dice_rolling.bonus,
+            dice_rolling.success_floor,
+            dice_rolling.dice_size,
+        )?;
+        Ok(DiceResultRaw { result, raw })
+    }
+
+    /// Shared entropy path for `reveal` and `reveal_raw`. Validates the
+    /// randomness source and returns `(raw 32 bytes, modulated roll)`.
+    fn _reveal(ctx: &mut Context<DiceRoll>) -> Result<([u8; 32], u8)> {
         let clock = Clock::get()?;
         let dice_rolling = &mut ctx.accounts.dice_rolling;
 
@@ -115,22 +146,14 @@ impl DiceRollingState {
                 return Err(ErrorCodes::RandomnessExpired.into());
             }
 
-            let revealed_random_value = randomness_data
+            let raw = randomness_data
                 .get_value(clock.slot)
                 .map_err(|_| ErrorCodes::RandomnessNotResolved)?;
 
-            let modulated_random_value = (revealed_random_value[0] % dice_rolling.dice_size) + 1;
-
-            let dice_result = Self::_build_dice_result(
-                modulated_random_value,
-                dice_rolling.bonus,
-                dice_rolling.success_floor,
-                dice_rolling.dice_size,
-            )?;
-
+            let modulated_random_value = (raw[0] % dice_rolling.dice_size) + 1;
             dice_rolling.latest_roll_result = modulated_random_value;
 
-            Ok(dice_result)
+            Ok((raw, modulated_random_value))
         }
 
         #[cfg(feature = "localnet-mock")]
@@ -145,19 +168,11 @@ impl DiceRollingState {
             hash_input.extend_from_slice(&clock.unix_timestamp.to_le_bytes());
             hash_input.extend_from_slice(dice_rolling.key().as_ref());
 
-            let hash = solana_keccak_hasher::hash(&hash_input);
-            let modulated_random_value = (hash.to_bytes()[0] % dice_rolling.dice_size) + 1;
-
-            let dice_result = Self::_build_dice_result(
-                modulated_random_value,
-                dice_rolling.bonus,
-                dice_rolling.success_floor,
-                dice_rolling.dice_size,
-            )?;
-
+            let raw = solana_keccak_hasher::hash(&hash_input).to_bytes();
+            let modulated_random_value = (raw[0] % dice_rolling.dice_size) + 1;
             dice_rolling.latest_roll_result = modulated_random_value;
 
-            Ok(dice_result)
+            Ok((raw, modulated_random_value))
         }
     }
 
@@ -233,6 +248,12 @@ pub struct DiceRollingState {
     pub bonus: u8,
     pub bump: u8,
     pub commit_slot: u64, // The slot at which the randomness was committed
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct DiceResultRaw {
+    pub result: DiceResult,
+    pub raw: [u8; 32],
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq, Eq)]
