@@ -18,13 +18,35 @@ pub struct EncounterTicket {
     pub version: u8,
     pub character: Pubkey,
     pub encounter_id: u64,
-    pub monster_id: u32,
+    /// Nano uid of the monster (content identity; lanes use `encounter_id`).
+    pub monster_id: [u8; MONSTER_ID_LEN],
     pub ac: u8,
-    pub max_hp: u16,
-    pub die: u8,
-    pub modifier: i8,
+    pub hit_points: u16,
+    pub attacks: Vec<Attack>,
     pub nonce: u64,
     pub expiry: i64,
+}
+
+impl EncounterTicket {
+    pub fn validate_limits(&self) -> Result<()> {
+        require!(
+            self.attacks.len() <= MAX_MONSTER_ATTACKS,
+            ErrorCodes::EncounterTicketTooLarge
+        );
+        for attack in &self.attacks {
+            require!(
+                attack.damages.len() <= MAX_ROLL_GROUPS_PER_ATTACK,
+                ErrorCodes::EncounterTicketTooLarge
+            );
+            for roll in &attack.damages {
+                require!(
+                    roll.num_die as usize <= MAX_DICE_PER_ROLL_GROUP && roll.die >= 2,
+                    ErrorCodes::EncounterTicketTooLarge
+                );
+            }
+        }
+        Ok(())
+    }
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq, Eq)]
