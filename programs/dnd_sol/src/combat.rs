@@ -125,3 +125,188 @@ pub fn damage_die(class: &CharacterClass) -> u8 {
     }
 }
 
+fn lane_hash(parts: &[&[u8]]) -> [u8; 32] {
+    let mut buf = Vec::new();
+    for part in parts {
+        buf.extend_from_slice(part);
+    }
+    keccak::hash(&buf).to_bytes()
+}
+
+/// Every round value derives from the one committed 32-byte raw, so aborting
+/// after seeing the player's roll cannot change the monster's response. Each
+/// die is indexed (round, attack, roll group, die) so it gets its own number.
+pub fn derive_player_damage_roll(
+    raw: &[u8; 32],
+    character: &Pubkey,
+    encounter_id: u64,
+    round: u8,
+    player_die: u8,
+) -> u8 {
+    let m = encounter_id.to_le_bytes();
+    lane_hash(&[raw, character.as_ref(), &m, &[round], b"p-dmg"])[0] % player_die.max(1) + 1
+}
+
+pub fn derive_monster_d20(raw: &[u8; 32], encounter_id: u64, round: u8, attack_index: u8) -> u8 {
+    let m = encounter_id.to_le_bytes();
+    lane_hash(&[raw, &m, &[round], &[attack_index], b"m-atk"])[0] % D20 + 1
+}
+
+pub fn derive_monster_die(
+    raw: &[u8; 32],
+    encounter_id: u64,
+    round: u8,
+    attack_index: u8,
+    roll_index: u8,
+    die_index: u8,
+    die: u8,
+) -> u8 {
+    let m = encounter_id.to_le_bytes();
+    lane_hash(&[
+        raw,
+        &m,
+        &[round],
+        &[attack_index],
+        &[roll_index],
+        &[die_index],
+        b"m-dmg",
+    ])[0]
+        % die.max(2)
+        + 1
+}
+
+pub struct RoundInput<'a> {
+    pub round: u8,
+    pub player_d20: u8,
+    pub raw: [u8; 32],
+    pub character: Pubkey,
+    pub encounter_id: u64,
+    pub monster_ac: u8,
+    pub monster_hp: u16,
+    pub attacks: &'a [Attack],
+    pub player_ac: u8,
+    pub character_hp: u16,
+    pub attack_bonus: i16,
+    pub player_die: u8,
+}
+
+pub struct RoundOutcome {
+    pub result: CombatRoundResult,
+    pub monster_hp: u16,
+    pub character_hp: u16,
+    pub status: CombatStatus,
+    pub next_round: u8,
+}
+
+fn hit(roll: u8, bonus: i16, target_ac: u8) -> bool {
+    if roll == D20 {
+        true
+    } else if roll == 1 {
+        false
+    } else {
+        roll as i16 + bonus >= target_ac as i16
+    }
+}
+
+fn monster_attack_damage(
+    attack: &Attack,
+    raw: &[u8; 32],
+    encounter_id: u64,
+    round: u8,
+    attack_index: u8,
+) -> u16 {
+    let mut total: i16 = 0;
+    for (roll_index, roll) in attack.damages.iter().enumerate() {
+        let mut group_total: i16 = roll.damage_bonus;
+        for die_index in 0..roll.num_die {
+            group_total += derive_monster_die(
+                raw,
+                encounter_id,
+                round,
+                attack_index,
+                roll_index as u8,
+                die_index,
+                roll.die,
+            ) as i16;
+        }
+        total += group_total;
+    }
+    total.max(1) as u16
+}
+
+pub fn resolve_round(input: RoundInput) -> RoundOutcome {
+    let player_damage_roll = derive_player_damage_roll(
+        &input.raw,
+        &input.character,
+        input.encounter_id,
+        input.round,
+        input.player_die,
+    );
+    let player_crit = input.player_d20 == D20;
+    let player_hit = hit(input.player_d20, input.attack_bonus, input.monster_ac);
+    // nat 20 doubles the damage dice; modeled as a doubled roll.
+    let player_damage = if player_hit {
+        player_damage_roll as u16 * if player_crit { 2 } else { 1 }
+    } else {
+        0
+    };
+    let monster_hp = input.monster_hp.saturating_sub(player_damage);
+
+    // Simultaneous round: the monster still swings on the round it dies, so a
+    // mutual kill is a Draw. Every attack gets its own d20 and damage.
+    let mut monster_attacks = Vec::with_capacity(input.attacks.len());
+    let mut monster_damage = 0u16;
+    let mut monster_hit = false;
+    for (index, attack) in input.attacks.iter().enumerate() {
+        let index = index as u8;
+        let d20 = derive_monster_d20(&input.raw, input.encounter_id, input.round, index);
+        let landed = hit(d20, attack.to_hit.unwrap_or(0) as i16, input.player_ac);
+        let damage = if landed {
+            monster_attack_damage(attack, &input.raw, input.encounter_id, input.round, index)
+        } else {
+            0
+        };
+        monster_hit |= landed;
+        monster_damage = monster_damage.saturating_add(damage);
+        monster_attacks.push(MonsterAttackResult {
+            index,
+            d20,
+            hit: landed,
+            damage,
+        });
+    }
+    let mut character_hp = input.character_hp.saturating_sub(monster_damage);
+
+    let monster_dead = monster_hp == 0;
+    let character_dead = character_hp == 0;
+
+    let (status, next_round) = match (monster_dead, character_dead) {
+        (true, true) => (CombatStatus::Draw, input.round),
+        (true, false) => (CombatStatus::Victory, input.round),
+        (false, true) => {
+            character_hp = 1; // pinned on defeat, per plan
+            (CombatStatus::Defeat, input.round)
+        }
+        (false, false) => (CombatStatus::InProgress, input.round + 1),
+    };
+
+    RoundOutcome {
+        result: CombatRoundResult {
+            round: input.round,
+            player_d20: input.player_d20,
+            player_hit,
+            player_crit,
+            player_damage,
+            monster_attacks,
+            monster_hit,
+            monster_damage,
+            monster_hp,
+            character_hp,
+            status,
+        },
+        monster_hp,
+        character_hp,
+        status,
+        next_round,
+    }
+}
