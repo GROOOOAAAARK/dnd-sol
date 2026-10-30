@@ -16,4 +16,16 @@ pub enum ErrorCodes {
     AttestationExpired,
     #[msg("Unsupported ticket version")]
     UnsupportedTicketVersion,
+    #[msg("Encounter is not in progress")]
+    CombatNotInProgress,
+    #[msg("A roll is already committed")]
+    CombatCommitPending,
+    #[msg("No committed roll to reveal")]
+    CombatCommitMissing,
+    #[msg("Encounter ticket is stale or replayed")]
+    StaleEncounterTicket,
+    #[msg("Encounter ticket is too large")]
+    EncounterTicketTooLarge,
+    #[msg("Encounter ticket does not match the started encounter")]
+    EncounterTicketMismatch,
 }
