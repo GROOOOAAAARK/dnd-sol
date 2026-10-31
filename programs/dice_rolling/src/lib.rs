@@ -45,6 +45,12 @@ pub mod dice_rolling {
     }
 }
 
+#[derive(PartialEq)]
+pub enum RollType {
+    Hit,
+    Damage,
+}
+
 impl DiceRollingState {
     pub const SPACE: usize = 8 + // discriminator
         32 + // allowed_user
