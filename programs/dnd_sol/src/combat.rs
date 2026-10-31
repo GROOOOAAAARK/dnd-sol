@@ -216,7 +216,7 @@ pub struct RoundOutcome {
 }
 
 fn hit(roll: u8, bonus: i16, target_ac: u8) -> bool {
-    if roll == D20 {
+    if roll == 20 {
         true
     } else if roll == 1 {
         false
@@ -238,7 +238,7 @@ fn attack_damage<F: Fn(u8, u8, u8) -> u8>(attack: &Attack, die_value: F) -> u16 
 }
 
 pub fn resolve_round(input: RoundInput) -> RoundOutcome {
-    let player_crit = input.player_d20 == D20;
+    let player_crit = input.player_d20 == 20;
     let player_hit_success = hit(
         input.player_d20,
         input.player.to_hit.unwrap_or(0) as i16,
