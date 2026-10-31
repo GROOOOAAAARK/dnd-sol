@@ -210,26 +210,12 @@ fn hit(roll: u8, bonus: i16, target_ac: u8) -> bool {
     }
 }
 
-fn monster_attack_damage(
-    attack: &Attack,
-    raw: &[u8; 32],
-    encounter_id: u64,
-    round: u8,
-    attack_index: u8,
-) -> u16 {
+fn attack_damage<F: Fn(u8, u8, u8) -> u8>(attack: &Attack, die_value: F) -> u16 {
     let mut total: i16 = 0;
     for (roll_index, roll) in attack.damages.iter().enumerate() {
         let mut group_total: i16 = roll.damage_bonus;
         for die_index in 0..roll.num_die {
-            group_total += derive_monster_die(
-                raw,
-                encounter_id,
-                round,
-                attack_index,
-                roll_index as u8,
-                die_index,
-                roll.die,
-            ) as i16;
+            group_total += die_value(roll_index as u8, die_index, roll.die) as i16;
         }
         total += group_total;
     }
@@ -245,40 +231,54 @@ pub fn resolve_round(input: RoundInput) -> RoundOutcome {
         input.player_die,
     );
     let player_crit = input.player_d20 == D20;
-    let player_hit = hit(input.player_d20, input.attack_bonus, input.monster_ac);
-    // nat 20 doubles the damage dice; modeled as a doubled roll.
-    let player_damage = if player_hit {
-        player_damage_roll as u16 * if player_crit { 2 } else { 1 }
+    let player_hit_success = hit(
+        input.player_d20,
+        input.player.to_hit.unwrap_or(0) as i16,
+        input.monster_ac,
+    );
+    let player_damages = if player_hit_success {
+        let base = attack_damage(input.player, |roll_index, die_index, die| {
+            derive_player_die(
+                &input.raw,
+                &input.character,
+                input.encounter_id,
+                input.round,
+                roll_index,
+                die_index,
+                die,
+            )
+        });
+        // nat 20 doubles the damage dice; modeled as a doubled total.
+        base * if player_crit { 2 } else { 1 }
     } else {
         0
     };
-    let monster_hp = input.monster_hp.saturating_sub(player_damage);
+    let monster_hp = input.monster_hp.saturating_sub(player_damages);
 
     // TODO: reevaluate this part, not sure it's really fair
     // Simultaneous round: the monster still swings on the round it dies, so a
-    // mutual kill is a Draw. Every attack gets its own d20 and damage.
-    let mut monster_attacks = Vec::with_capacity(input.attacks.len());
-    let mut monster_damage = 0u16;
-    let mut monster_hit = false;
-    for (index, attack) in input.attacks.iter().enumerate() {
-        let index = index as u8;
-        let d20 = derive_monster_d20(&input.raw, input.encounter_id, input.round, index);
-        let landed = hit(d20, attack.to_hit.unwrap_or(0) as i16, input.player_ac);
-        let damage = if landed {
-            monster_attack_damage(attack, &input.raw, input.encounter_id, input.round, index)
-        } else {
-            0
-        };
-        monster_hit |= landed;
-        monster_damage = monster_damage.saturating_add(damage);
-        monster_attacks.push(MonsterAttackResult {
-            index,
-            d20,
-            hit: landed,
-            damage,
-        });
-    }
-    let mut character_hp = input.character_hp.saturating_sub(monster_damage);
+    // mutual kill is a Draw.
+    let monster_hit = derive_monster_d20(&input.raw, input.encounter_id, input.round);
+    let monster_hit_success = hit(
+        monster_hit,
+        input.monster.to_hit.unwrap_or(0) as i16,
+        input.player_ac,
+    );
+    let monster_damages = if monster_hit_success {
+        attack_damage(input.monster, |roll_index, die_index, die| {
+            derive_monster_die(
+                &input.raw,
+                input.encounter_id,
+                input.round,
+                roll_index,
+                die_index,
+                die,
+            )
+        })
+    } else {
+        0
+    };
+    let mut character_hp = input.character_hp.saturating_sub(monster_damages);
 
     let monster_dead = monster_hp == 0;
     let character_dead = character_hp == 0;
