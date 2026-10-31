@@ -128,7 +128,7 @@ pub fn verify_ticket(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::combat::DamageRoll;
+    use crate::combat::{Attack, DamageRoll};
 
     #[test]
     fn ticket_borsh_round_trips() {
@@ -139,14 +139,6 @@ mod tests {
             monster_id: [0u8; MONSTER_ID_LEN],
             ac: 15,
             hit_points: 30,
-            attacks: vec![Attack {
-                to_hit: Some(5),
-                damages: vec![DamageRoll {
-                    die: 8,
-                    num_die: 2,
-                    damage_bonus: 3,
-                }],
-            }],
             nonce: 1,
             expiry: 1_700_000_000,
         };
@@ -154,6 +146,38 @@ mod tests {
         assert_eq!(
             borsh::from_slice::<EncounterTicket>(&bytes).unwrap(),
             ticket
+        );
+    }
+
+    #[test]
+    fn round_payload_borsh_round_trips() {
+        let payload = RoundPayload {
+            version: TICKET_VERSION,
+            character: Pubkey::new_from_array([7u8; 32]),
+            encounter_id: 42,
+            round: 1,
+            player: Attack {
+                to_hit: Some(5),
+                damages: vec![DamageRoll {
+                    die: 8,
+                    num_die: 1,
+                    damage_bonus: 0,
+                }],
+            },
+            monster: Attack {
+                to_hit: Some(-3),
+                damages: vec![DamageRoll {
+                    die: 6,
+                    num_die: 2,
+                    damage_bonus: 3,
+                }],
+            },
+            expiry: 1_700_000_000,
+        };
+        let bytes = borsh::to_vec(&payload).unwrap();
+        assert_eq!(
+            borsh::from_slice::<RoundPayload>(&bytes).unwrap(),
+            payload
         );
     }
 
@@ -178,7 +202,7 @@ mod tests {
         assert!(result.is_err());
     }
 
-    fn golden_ticket() -> EncounterTicket {
+    fn golden_encounter_ticket() -> EncounterTicket {
         let mut monster_id = [0u8; MONSTER_ID_LEN];
         monster_id.copy_from_slice(b"gVJhLCg8hvsMR79w9lqf4");
         EncounterTicket {
@@ -188,25 +212,33 @@ mod tests {
             monster_id,
             ac: 12,
             hit_points: 58,
-            attacks: vec![
-                Attack {
-                    to_hit: Some(5),
-                    damages: vec![DamageRoll {
-                        die: 8,
-                        num_die: 2,
-                        damage_bonus: 3,
-                    }],
-                },
-                Attack {
-                    to_hit: Some(3),
-                    damages: vec![DamageRoll {
-                        die: 6,
-                        num_die: 1,
-                        damage_bonus: 0,
-                    }],
-                },
-            ],
             nonce: 1000,
+            expiry: 1_700_000_000,
+        }
+    }
+
+    fn golden_round_payload() -> RoundPayload {
+        RoundPayload {
+            version: TICKET_VERSION,
+            character: Pubkey::new_from_array([7u8; 32]),
+            encounter_id: 42,
+            round: 1,
+            player: Attack {
+                to_hit: Some(5),
+                damages: vec![DamageRoll {
+                    die: 8,
+                    num_die: 1,
+                    damage_bonus: 0,
+                }],
+            },
+            monster: Attack {
+                to_hit: Some(-3),
+                damages: vec![DamageRoll {
+                    die: 6,
+                    num_die: 2,
+                    damage_bonus: 3,
+                }],
+            },
             expiry: 1_700_000_000,
         }
     }
@@ -216,21 +248,38 @@ mod tests {
     }
 
     /// Frozen contract: the TS encoder must produce these exact bytes for the
-    /// same ticket. The fixture is shared at `tests/fixtures/`.
+    /// same messages. The fixture is shared at `tests/fixtures/`.
     #[test]
     fn golden_vector_matches_fixture() {
-        const FIXTURE: &str = include_str!("../../../tests/fixtures/encounter-ticket-golden.json");
-        const EXPECTED_BYTES: &str = "0107070707070707070707070707070707070707070707070707070707070707072a0000000000000067564a684c4367386876734d52373977396c7166340c3a0002000000050100000008020300fd0100000006010000e80300000000000000f1536500000000";
-        const EXPECTED_DIGEST: &str =
-            "a10518c96f9105f7971bb606ef46c4aad3c416a659edd67aa3083561832e3fe6";
+        const FIXTURE: &str =
+            include_str!("../../../tests/fixtures/encounter-ticket-golden.json");
 
-        let bytes = borsh::to_vec(&golden_ticket()).unwrap();
-        let digest = keccak::hash(&bytes).to_bytes();
+        let encounter = borsh::to_vec(&golden_encounter_ticket()).unwrap();
+        let encounter_digest = keccak::hash(&encounter).to_bytes();
+        assert_eq!(
+            to_hex(&encounter),
+            "0107070707070707070707070707070707070707070707070707070707070707072a0000000000000067564a684c4367386876734d52373977396c7166340c3a00e80300000000000000f1536500000000"
+        );
+        assert_eq!(
+            to_hex(&encounter_digest),
+            "93ce5799ee3f5c13a7fe2269e6fb8cf15da28850a220820ed5bae3ee3aadcca2"
+        );
 
-        assert_eq!(to_hex(&bytes), EXPECTED_BYTES);
-        assert_eq!(to_hex(&digest), EXPECTED_DIGEST);
+        let round = borsh::to_vec(&golden_round_payload()).unwrap();
+        let round_digest = keccak::hash(&round).to_bytes();
+        assert_eq!(
+            to_hex(&round),
+            "0107070707070707070707070707070707070707070707070707070707070707072a00000000000000010105010000000801000001fd010000000602030000f1536500000000"
+        );
+        assert_eq!(
+            to_hex(&round_digest),
+            "99d19fda5e9b07ad1a49eb80a9dc6fef48195cc3f358818af6b9f0d00e92eb11"
+        );
+
         // Guard against the fixture drifting from the constants above.
-        assert!(FIXTURE.contains(EXPECTED_BYTES));
-        assert!(FIXTURE.contains(EXPECTED_DIGEST));
+        assert!(FIXTURE.contains(&to_hex(&encounter)));
+        assert!(FIXTURE.contains(&to_hex(&encounter_digest)));
+        assert!(FIXTURE.contains(&to_hex(&round)));
+        assert!(FIXTURE.contains(&to_hex(&round_digest)));
     }
 }
