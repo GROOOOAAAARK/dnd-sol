@@ -3,7 +3,24 @@ use anchor_lang::prelude::*;
 use solana_keccak_hasher as keccak;
 
 pub const COMBAT_SEED: &[u8] = b"combat";
-pub const D20: u8 = 20;
+
+#[derive(PartialEq)]
+pub enum DiceType {
+    D100 = 100,
+    D20 = 20,
+    D12 = 12,
+    D10 = 10,
+    D8 = 8,
+    D6 = 6,
+    D4 = 4,
+    D2 = 2,
+}
+
+#[derive(PartialEq)]
+pub enum Sender {
+    Player,
+    Monster,
+}
 
 /// Nano id length (nano default). Fixed so the session stays zero-copy sized.
 pub const MONSTER_ID_LEN: usize = 21;
