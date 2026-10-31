@@ -61,16 +61,18 @@ impl CombatSession {
         32 + 1 + 1 + 1 + MONSTER_ID_LEN + 1 + 2 + 2 + 8 + 32 + 8 + 1;
 }
 
+/// Scalar round report. Only the hit roll is a d20; damage totals come from the
+/// attack's own dice.
 #[derive(Clone, Debug, PartialEq, Eq, AnchorSerialize, AnchorDeserialize)]
 pub struct CombatRoundResult {
     pub round: u8,
-    pub player_d20: u8,
-    pub player_hit: bool,
+    pub player_hit: u8,
+    pub player_hit_success: bool,
     pub player_crit: bool,
-    pub player_damage: u16,
-    pub monster_attacks: Vec<MonsterAttackResult>,
-    pub monster_hit: bool,
-    pub monster_damage: u16,
+    pub player_damages: u16,
+    pub monster_hit: u8,
+    pub monster_hit_success: bool,
+    pub monster_damages: u16,
     pub monster_hp: u16,
     pub character_hp: u16,
     pub status: CombatStatus,
