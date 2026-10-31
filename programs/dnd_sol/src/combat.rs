@@ -112,10 +112,14 @@ pub fn armor_class(class: &CharacterClass, stats: &CharacterStats) -> u8 {
     total.clamp(0, u8::MAX as i16) as u8
 }
 
+/// Main-hand attack bonus (proficiency + attack ability modifier), used by the
+/// backend when it builds the player's signed attack.
+/// TODO: pass type of attack here (melee, distant or magic) to determine ability_modifier use
 pub fn attack_bonus(class: &CharacterClass, level: u8, stats: &CharacterStats) -> i16 {
     proficiency(level) + ability_modifier(attack_stat(class, stats))
 }
 
+/// Main-hand damage die per class.
 pub fn damage_die(class: &CharacterClass) -> u8 {
     match class {
         CharacterClass::Barbarian | CharacterClass::Warrior => 8,
@@ -134,8 +138,8 @@ fn lane_hash(parts: &[&[u8]]) -> [u8; 32] {
 
 /// Every round value derives from the one committed 32-byte raw, so aborting
 /// after seeing the player's roll cannot change the monster's response. Each
-/// die is indexed (round, attack, roll group, die) so it gets its own number.
-pub fn derive_player_damage_roll(
+/// die is indexed (round, roll group, die) so it gets its own number.
+pub fn derive_player_die(
     raw: &[u8; 32],
     character: &Pubkey,
     encounter_id: u64,
@@ -251,6 +255,7 @@ pub fn resolve_round(input: RoundInput) -> RoundOutcome {
     };
     let monster_hp = input.monster_hp.saturating_sub(player_damage);
 
+    // TODO: reevaluate this part, not sure it's really fair
     // Simultaneous round: the monster still swings on the round it dies, so a
     // mutual kill is a Draw. Every attack gets its own d20 and damage.
     let mut monster_attacks = Vec::with_capacity(input.attacks.len());
