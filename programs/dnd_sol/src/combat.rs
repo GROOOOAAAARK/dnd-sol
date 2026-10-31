@@ -26,16 +26,18 @@ pub struct DamageRoll {
     pub damage_bonus: i16,
 }
 
+/// Shared attack shape for the player and the monster. `to_hit` is the
+/// attack-roll bonus added to the d20 (the `+5` of `+5 (2d8+3)`); `None` is
+/// treated as `+0`.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq, Eq)]
 pub struct Attack {
-    /// The `+5` of a `+5 (2d8+3)` attack card: added to the monster's d20.
     pub to_hit: Option<i8>,
     pub damages: Vec<DamageRoll>,
 }
 
 /// One reusable fight per character. Never accumulates; `start_combat`
-/// overwrites. The monster's attacks live in the encounter ticket (attester
-/// signed); only its hash is kept on-chain so the PDA stays small.
+/// overwrites. Monster identity/stats come from the encounter ticket, the
+/// attacks from the per-round payload; only the payload hash sits on-chain.
 #[account]
 pub struct CombatSession {
     pub character: Pubkey,
@@ -43,25 +45,20 @@ pub struct CombatSession {
     pub round: u8,
     pub commit_pending: bool,
     pub monster_id: [u8; MONSTER_ID_LEN],
+    pub monster_ac: u8,
     pub monster_hp: u16,
     pub character_hp: u16,
-    /// `keccak256(encounter_ticket_bytes)`; bound at start, re-checked on reveal.
-    pub ticket_hash: [u8; 32],
-    /// Monotonic across encounters; a replayed ticket is rejected.
+    pub encounter_id: u64,
+    /// `keccak256(round_payload_bytes)`; bound at commit, re-checked on reveal.
+    pub round_payload_hash: [u8; 32],
+    /// Monotonic across encounters; a replayed encounter ticket is rejected.
     pub last_nonce: u64,
     pub bump: u8,
 }
 
 impl CombatSession {
-    pub const SPACE: usize = 32 + 1 + 1 + 1 + MONSTER_ID_LEN + 2 + 2 + 32 + 8 + 1;
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, AnchorSerialize, AnchorDeserialize)]
-pub struct MonsterAttackResult {
-    pub index: u8,
-    pub d20: u8,
-    pub hit: bool,
-    pub damage: u16,
+    pub const SPACE: usize =
+        32 + 1 + 1 + 1 + MONSTER_ID_LEN + 1 + 2 + 2 + 8 + 32 + 8 + 1;
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, AnchorSerialize, AnchorDeserialize)]
