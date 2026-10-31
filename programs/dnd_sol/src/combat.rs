@@ -223,13 +223,6 @@ fn attack_damage<F: Fn(u8, u8, u8) -> u8>(attack: &Attack, die_value: F) -> u16 
 }
 
 pub fn resolve_round(input: RoundInput) -> RoundOutcome {
-    let player_damage_roll = derive_player_damage_roll(
-        &input.raw,
-        &input.character,
-        input.encounter_id,
-        input.round,
-        input.player_die,
-    );
     let player_crit = input.player_d20 == D20;
     let player_hit_success = hit(
         input.player_d20,
@@ -296,13 +289,13 @@ pub fn resolve_round(input: RoundInput) -> RoundOutcome {
     RoundOutcome {
         result: CombatRoundResult {
             round: input.round,
-            player_d20: input.player_d20,
-            player_hit,
+            player_hit: input.player_d20,
+            player_hit_success,
             player_crit,
-            player_damage,
-            monster_attacks,
+            player_damages,
             monster_hit,
-            monster_damage,
+            monster_hit_success,
+            monster_damages,
             monster_hp,
             character_hp,
             status,
@@ -342,7 +335,7 @@ mod tests {
         }
     }
 
-    fn round_input<'a>(attacks: &'a [Attack]) -> RoundInput<'a> {
+    fn round_input<'a>(player: &'a Attack, monster: &'a Attack) -> RoundInput<'a> {
         RoundInput {
             round: 1,
             player_d20: 10,
@@ -351,7 +344,8 @@ mod tests {
             encounter_id: 1,
             monster_ac: 12,
             monster_hp: 100,
-            attacks,
+            player,
+            monster,
             player_ac: 12,
             character_hp: 100,
             attack_bonus: 5,
