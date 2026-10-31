@@ -8,11 +8,11 @@ use solana_secp256k1_recover::{secp256k1_recover, Secp256k1Pubkey};
 
 pub const TICKET_VERSION: u8 = 1;
 
-/// Bounds kept so a ticket cannot blow up the per-round lane derivation.
-pub const MAX_MONSTER_ATTACKS: usize = 2;
-pub const MAX_ROLL_GROUPS_PER_ATTACK: usize = 4;
+/// Bounds kept so a payload cannot blow up the per-round lane derivation.
+pub const MAX_DAMAGE_GROUPS: usize = 4;
 pub const MAX_DICE_PER_ROLL_GROUP: usize = 12;
 
+/// Signed once per fight (at `start_combat`): fight identity only.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq, Eq)]
 pub struct EncounterTicket {
     pub version: u8,
@@ -22,31 +22,41 @@ pub struct EncounterTicket {
     pub monster_id: [u8; MONSTER_ID_LEN],
     pub ac: u8,
     pub hit_points: u16,
-    pub attacks: Vec<Attack>,
     pub nonce: u64,
     pub expiry: i64,
 }
 
-impl EncounterTicket {
+/// Signed each round so the player can change attacks between rounds.
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq, Eq)]
+pub struct RoundPayload {
+    pub version: u8,
+    pub character: Pubkey,
+    pub encounter_id: u64,
+    pub round: u8,
+    pub player: Attack,
+    pub monster: Attack,
+    pub expiry: i64,
+}
+
+impl RoundPayload {
     pub fn validate_limits(&self) -> Result<()> {
+        validate_attack(&self.player)?;
+        validate_attack(&self.monster)
+    }
+}
+
+fn validate_attack(attack: &Attack) -> Result<()> {
+    require!(
+        attack.damages.len() <= MAX_DAMAGE_GROUPS,
+        ErrorCodes::EncounterTicketTooLarge
+    );
+    for roll in &attack.damages {
         require!(
-            self.attacks.len() <= MAX_MONSTER_ATTACKS,
+            roll.num_die as usize <= MAX_DICE_PER_ROLL_GROUP && roll.die >= 2,
             ErrorCodes::EncounterTicketTooLarge
         );
-        for attack in &self.attacks {
-            require!(
-                attack.damages.len() <= MAX_ROLL_GROUPS_PER_ATTACK,
-                ErrorCodes::EncounterTicketTooLarge
-            );
-            for roll in &attack.damages {
-                require!(
-                    roll.num_die as usize <= MAX_DICE_PER_ROLL_GROUP && roll.die >= 2,
-                    ErrorCodes::EncounterTicketTooLarge
-                );
-            }
-        }
-        Ok(())
     }
+    Ok(())
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq, Eq)]
