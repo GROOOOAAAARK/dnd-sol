@@ -1,5 +1,6 @@
 use crate::character::{CharacterClass, CharacterStats};
 use anchor_lang::prelude::*;
+use dice_rolling::RollType;
 use solana_keccak_hasher as keccak;
 
 pub const COMBAT_SEED: &[u8] = b"combat";
@@ -380,6 +381,27 @@ mod tests {
         }
     }
 
+    /// Deterministic raw whose monster d20 satisfies `pred` (encounter 1, round 1).
+    fn raw_where(mut pred: impl FnMut(u8) -> bool) -> [u8; 32] {
+        for value in 0..=255u8 {
+            let raw = [value; 32];
+            if pred(derive_die(
+                Sender::Monster,
+                RollType::Hit,
+                &raw,
+                1,
+                1,
+                0,
+                0,
+                20,
+                None,
+            )) {
+                return raw;
+            }
+        }
+        panic!("no raw satisfies predicate");
+    }
+
     #[test]
     fn ability_modifier_floors_negatives() {
         assert_eq!(ability_modifier(10), 0);
@@ -412,77 +434,148 @@ mod tests {
     fn lanes_are_deterministic_and_in_bounds() {
         let key = Pubkey::new_from_array([1u8; 32]);
         assert_eq!(
-            derive_player_damage_roll(&[9u8; 32], &key, 5, 2, 8),
-            derive_player_damage_roll(&[9u8; 32], &key, 5, 2, 8)
+            derive_die(
+                Sender::Player,
+                RollType::Damage,
+                &[9u8; 32],
+                5,
+                2,
+                0,
+                0,
+                8,
+                Some(&key),
+            ),
+            derive_die(
+                Sender::Monster,
+                RollType::Damage,
+                &[9u8; 32],
+                5,
+                2,
+                0,
+                0,
+                8,
+                Some(&key),
+            )
         );
-        assert!((1..=8).contains(&derive_player_damage_roll(&[9u8; 32], &key, 5, 2, 8)));
-        assert!((1..=20).contains(&derive_monster_d20(&[9u8; 32], 5, 2, 0)));
+        assert!((1..=8).contains(&derive_die(
+            Sender::Player,
+            RollType::Damage,
+            &[9u8; 32],
+            5,
+            2,
+            0,
+            0,
+            8,
+            Some(&key)
+        )));
+        assert!((1..=20).contains(&derive_die(
+            Sender::Monster,
+            RollType::Damage,
+            &[9u8; 32],
+            5,
+            2,
+            0,
+            0,
+            20,
+            None,
+        )));
     }
 
     #[test]
     fn every_die_gets_a_distinct_lane() {
-        let raw = [3u8; 32];
-        let first = derive_monster_die(&raw, 1, 1, 0, 0, 0, 6);
-        let second = derive_monster_die(&raw, 1, 1, 0, 0, 1, 6);
-        assert_ne!(first, second);
-        assert!((1..=6).contains(&first));
+        let values: Vec<u8> = (0..6)
+            .map(|die_index| {
+                derive_die(
+                    Sender::Monster,
+                    RollType::Damage,
+                    &[3u8; 32],
+                    1,
+                    1,
+                    0,
+                    die_index,
+                    6,
+                    None,
+                )
+            })
+            .collect();
+        assert!(values.iter().all(|value| (1..=6).contains(value)));
+        assert!(values.iter().any(|value| *value != values[0]));
     }
 
     #[test]
     fn round_continues_when_nobody_dies() {
-        let attacks = [attack(Some(0), 6, 1, 0)];
-        let outcome = resolve_round(round_input(&attacks));
+        let player = attack(Some(5), 8, 1, 0);
+        let monster = attack(Some(0), 6, 1, 0);
+        let outcome = resolve_round(round_input(&player, &monster));
         assert_eq!(outcome.status, CombatStatus::InProgress);
         assert_eq!(outcome.next_round, 2);
-        assert!(outcome.result.player_hit);
-        assert_eq!(outcome.result.monster_attacks.len(), 1);
+        assert!(outcome.result.player_hit_success);
     }
 
     #[test]
     fn natural_one_auto_misses() {
-        let attacks = [attack(Some(0), 6, 1, 0)];
-        let mut input = round_input(&attacks);
+        let player = attack(Some(100), 8, 1, 0); // still misses on a nat 1
+        let monster = attack(Some(0), 6, 1, 0);
+        let mut input = round_input(&player, &monster);
         input.player_d20 = 1;
-        input.attack_bonus = 100; // still misses
         let outcome = resolve_round(input);
-        assert!(!outcome.result.player_hit);
-        assert_eq!(outcome.result.player_damage, 0);
+        assert!(!outcome.result.player_hit_success);
+        assert_eq!(outcome.result.player_damages, 0);
     }
 
     #[test]
     fn natural_twenty_doubles_weapon_damage() {
-        let attacks = [attack(Some(0), 6, 1, 0)];
-        let mut input = round_input(&attacks);
+        let player = attack(Some(5), 8, 1, 0);
+        let monster = attack(Some(-100), 6, 1, 0);
+        let mut input = round_input(&player, &monster);
         input.player_d20 = 20;
-        let base = derive_player_damage_roll(
+        let base = derive_die(
+            Sender::Player,
+            RollType::Damage,
             &input.raw,
-            &input.character,
             input.encounter_id,
             input.round,
-            input.player_die,
+            0,
+            0,
+            8,
+            Some(&input.character),
         );
         let outcome = resolve_round(input);
         assert!(outcome.result.player_crit);
-        assert_eq!(outcome.result.player_damage, base as u16 * 2);
+        assert_eq!(outcome.result.player_damages, base as u16 * 2);
     }
 
     #[test]
     fn multi_die_attack_sums_dice_and_bonus() {
-        let attacks = [attack(Some(0), 6, 3, 5)];
-        let outcome = resolve_round(round_input(&attacks));
+        let player = attack(Some(5), 8, 1, 0);
+        let monster = attack(Some(100), 6, 3, 5);
+        let raw = raw_where(|d20| d20 != 1);
+        let mut input = round_input(&player, &monster);
+        input.raw = raw;
+        let outcome = resolve_round(input);
         let expected = (0..3).fold(5u16, |sum, die_index| {
-            sum + derive_monster_die(&[7u8; 32], 1, 1, 0, 0, die_index, 6) as u16
+            sum + derive_die(
+                Sender::Monster,
+                RollType::Damage,
+                &raw,
+                1,
+                1,
+                0,
+                die_index,
+                6,
+                None,
+            ) as u16
         });
-        assert!(outcome.result.monster_hit);
-        assert_eq!(outcome.result.monster_damage, expected);
+        assert!(outcome.result.monster_hit_success);
+        assert_eq!(outcome.result.monster_damages, expected);
     }
 
     #[test]
     fn killing_the_monster_is_victory() {
-        let attacks = [attack(Some(-100), 6, 1, 0)]; // monster cannot hurt the player
-        let mut input = round_input(&attacks);
+        let player = attack(Some(100), 8, 1, 0);
+        let monster = attack(Some(-100), 6, 1, 0); // cannot hurt the player
+        let mut input = round_input(&player, &monster);
         input.monster_hp = 1;
-        input.attack_bonus = 100;
         let outcome = resolve_round(input);
         assert_eq!(outcome.status, CombatStatus::Victory);
         assert_eq!(outcome.monster_hp, 0);
@@ -490,11 +583,13 @@ mod tests {
 
     #[test]
     fn dropped_character_is_defeat_pinned_at_one() {
-        let attacks = [attack(Some(100), 6, 1, 0)];
-        let mut input = round_input(&attacks);
+        let player = attack(Some(0), 8, 1, 0);
+        let monster = attack(Some(100), 6, 1, 0);
+        let mut input = round_input(&player, &monster);
         input.player_d20 = 1; // no player damage
         input.character_hp = 1;
         input.player_ac = 0;
+        input.raw = raw_where(|d20| d20 != 1);
         let outcome = resolve_round(input);
         assert_eq!(outcome.status, CombatStatus::Defeat);
         assert_eq!(outcome.character_hp, 1);
@@ -502,12 +597,13 @@ mod tests {
 
     #[test]
     fn mutual_kill_is_draw() {
-        let attacks = [attack(Some(100), 6, 1, 0)];
-        let mut input = round_input(&attacks);
+        let player = attack(Some(100), 8, 1, 0);
+        let monster = attack(Some(100), 6, 1, 0);
+        let mut input = round_input(&player, &monster);
         input.monster_hp = 1;
-        input.attack_bonus = 100;
         input.character_hp = 1;
         input.player_ac = 0;
+        input.raw = raw_where(|d20| d20 != 1);
         let outcome = resolve_round(input);
         assert_eq!(outcome.status, CombatStatus::Draw);
     }
