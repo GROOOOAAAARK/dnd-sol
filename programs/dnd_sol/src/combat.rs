@@ -57,8 +57,7 @@ pub struct CombatSession {
 }
 
 impl CombatSession {
-    pub const SPACE: usize =
-        32 + 1 + 1 + 1 + MONSTER_ID_LEN + 1 + 2 + 2 + 8 + 32 + 8 + 1;
+    pub const SPACE: usize = 32 + 1 + 1 + 1 + MONSTER_ID_LEN + 1 + 2 + 2 + 8 + 32 + 8 + 1;
 }
 
 /// Scalar round report. Only the hit roll is a d20; damage totals come from the
@@ -144,22 +143,6 @@ pub fn derive_player_die(
     character: &Pubkey,
     encounter_id: u64,
     round: u8,
-    player_die: u8,
-) -> u8 {
-    let m = encounter_id.to_le_bytes();
-    lane_hash(&[raw, character.as_ref(), &m, &[round], b"p-dmg"])[0] % player_die.max(1) + 1
-}
-
-pub fn derive_monster_d20(raw: &[u8; 32], encounter_id: u64, round: u8, attack_index: u8) -> u8 {
-    let m = encounter_id.to_le_bytes();
-    lane_hash(&[raw, &m, &[round], &[attack_index], b"m-atk"])[0] % D20 + 1
-}
-
-pub fn derive_monster_die(
-    raw: &[u8; 32],
-    encounter_id: u64,
-    round: u8,
-    attack_index: u8,
     roll_index: u8,
     die_index: u8,
     die: u8,
@@ -167,15 +150,32 @@ pub fn derive_monster_die(
     let m = encounter_id.to_le_bytes();
     lane_hash(&[
         raw,
+        character.as_ref(),
         &m,
         &[round],
-        &[attack_index],
         &[roll_index],
         &[die_index],
-        b"m-dmg",
+        b"p-dmg",
     ])[0]
         % die.max(2)
         + 1
+}
+
+pub fn derive_monster_d20(raw: &[u8; 32], encounter_id: u64, round: u8) -> u8 {
+    let m = encounter_id.to_le_bytes();
+    lane_hash(&[raw, &m, &[round], b"m-atk"])[0] % D20 + 1
+}
+
+pub fn derive_monster_die(
+    raw: &[u8; 32],
+    encounter_id: u64,
+    round: u8,
+    roll_index: u8,
+    die_index: u8,
+    die: u8,
+) -> u8 {
+    let m = encounter_id.to_le_bytes();
+    lane_hash(&[raw, &m, &[round], &[roll_index], &[die_index], b"m-dmg"])[0] % die.max(2) + 1
 }
 
 pub struct RoundInput<'a> {
@@ -186,11 +186,10 @@ pub struct RoundInput<'a> {
     pub encounter_id: u64,
     pub monster_ac: u8,
     pub monster_hp: u16,
-    pub attacks: &'a [Attack],
+    pub player: &'a Attack,
+    pub monster: &'a Attack,
     pub player_ac: u8,
     pub character_hp: u16,
-    pub attack_bonus: i16,
-    pub player_die: u8,
 }
 
 pub struct RoundOutcome {
