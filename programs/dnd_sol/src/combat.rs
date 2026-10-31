@@ -153,46 +153,43 @@ fn lane_hash(parts: &[&[u8]]) -> [u8; 32] {
 }
 
 /// Every round value derives from the one committed 32-byte raw, so aborting
-/// after seeing the player's roll cannot change the monster's response. Each
+/// after seeing the sender's roll cannot change the next sender's response. Each
 /// die is indexed (round, roll group, die) so it gets its own number.
-pub fn derive_player_die(
+pub fn derive_die(
+    sender: Sender,
+    roll_type: RollType,
     raw: &[u8; 32],
-    character: &Pubkey,
     encounter_id: u64,
     round: u8,
     roll_index: u8,
     die_index: u8,
     die: u8,
+    character: Option<&Pubkey>,
 ) -> u8 {
     let m = encounter_id.to_le_bytes();
+    let str_sender = if sender == Sender::Player { "p" } else { "m" };
+    let str_roll_type = if roll_type == RollType::Hit {
+        "atk"
+    } else {
+        "dmg"
+    };
+    let join_vec = [str_sender, str_roll_type].join("-");
+    let seed = join_vec.as_bytes();
+    let character_enriched_seed: &[u8] = if character.is_some() {
+        &[seed, character.unwrap().as_array()].concat().to_vec()
+    } else {
+        seed
+    };
     lane_hash(&[
         raw,
-        character.as_ref(),
         &m,
         &[round],
         &[roll_index],
         &[die_index],
-        b"p-dmg",
+        character_enriched_seed,
     ])[0]
         % die.max(2)
         + 1
-}
-
-pub fn derive_monster_d20(raw: &[u8; 32], encounter_id: u64, round: u8) -> u8 {
-    let m = encounter_id.to_le_bytes();
-    lane_hash(&[raw, &m, &[round], b"m-atk"])[0] % D20 + 1
-}
-
-pub fn derive_monster_die(
-    raw: &[u8; 32],
-    encounter_id: u64,
-    round: u8,
-    roll_index: u8,
-    die_index: u8,
-    die: u8,
-) -> u8 {
-    let m = encounter_id.to_le_bytes();
-    lane_hash(&[raw, &m, &[round], &[roll_index], &[die_index], b"m-dmg"])[0] % die.max(2) + 1
 }
 
 pub struct RoundInput<'a> {
@@ -248,14 +245,16 @@ pub fn resolve_round(input: RoundInput) -> RoundOutcome {
     );
     let player_damages = if player_hit_success {
         let base = attack_damage(input.player, |roll_index, die_index, die| {
-            derive_player_die(
+            derive_die(
+                Sender::Player,
+                RollType::Damage,
                 &input.raw,
-                &input.character,
                 input.encounter_id,
                 input.round,
                 roll_index,
                 die_index,
                 die,
+                Some(&input.character),
             )
         });
         // nat 20 doubles the damage dice; modeled as a doubled total.
@@ -268,7 +267,17 @@ pub fn resolve_round(input: RoundInput) -> RoundOutcome {
     // TODO: reevaluate this part, not sure it's really fair
     // Simultaneous round: the monster still swings on the round it dies, so a
     // mutual kill is a Draw.
-    let monster_hit = derive_monster_d20(&input.raw, input.encounter_id, input.round);
+    let monster_hit = derive_die(
+        Sender::Monster,
+        RollType::Hit,
+        &input.raw,
+        input.encounter_id,
+        input.round,
+        0,
+        0,
+        0,
+        None,
+    );
     let monster_hit_success = hit(
         monster_hit,
         input.monster.to_hit.unwrap_or(0) as i16,
@@ -276,13 +285,16 @@ pub fn resolve_round(input: RoundInput) -> RoundOutcome {
     );
     let monster_damages = if monster_hit_success {
         attack_damage(input.monster, |roll_index, die_index, die| {
-            derive_monster_die(
+            derive_die(
+                Sender::Monster,
+                RollType::Damage,
                 &input.raw,
                 input.encounter_id,
                 input.round,
                 roll_index,
                 die_index,
                 die,
+                None,
             )
         })
     } else {
@@ -365,8 +377,6 @@ mod tests {
             monster,
             player_ac: 12,
             character_hp: 100,
-            attack_bonus: 5,
-            player_die: 8,
         }
     }
 
