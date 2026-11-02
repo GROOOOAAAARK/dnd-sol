@@ -8,9 +8,6 @@ skip-lint = false
 dice_rolling = "LTwGJmVKw2FkgByX2JehTkS2AqddnniuA2jyV4zZzwv"
 dnd_sol = "5XQUKVykhN5D3WkJ1MdsRxaJDmEszjRzhje3e6TjF4Wd"
 
-[registry]
-url = "https://api.apr.dev"
-
 [provider]
 cluster = "localnet"
 wallet = "~/.config/solana/id.json"
