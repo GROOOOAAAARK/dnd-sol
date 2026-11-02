@@ -11,7 +11,7 @@ pub mod inventory;
 pub mod item;
 use attestation::{verify_ticket, EncounterTicket};
 use character::{Character, CharacterAccount, CharacterAttributes};
-use combat::{CombatRoundResult, CombatSession, CombatStatus, COMBAT_SEED};
+use combat::{CombatRoundResult, CombatSession, CombatStatus, DiceType, COMBAT_SEED};
 use error_codes::ErrorCodes;
 
 declare_id!("5XQUKVykhN5D3WkJ1MdsRxaJDmEszjRzhje3e6TjF4Wd");
@@ -99,7 +99,6 @@ pub mod dnd_sol {
         signature: [u8; 64],
     ) -> Result<()> {
         let ticket = EncounterTicket::try_from_slice(&ticket_bytes)?;
-        ticket.validate_limits()?;
         verify_ticket(
             &ticket_bytes,
             &signature,
@@ -181,8 +180,8 @@ pub mod dnd_sol {
         };
         dice_rolling::cpi::commit_roll(
             CpiContext::new(ctx.accounts.dice_rolling_program.key(), cpi_accounts),
-            combat::D20,
-            combat::D20,
+            DiceType::D20 as u8,
+            DiceType::D10 as u8,
             0,
         )?;
 
