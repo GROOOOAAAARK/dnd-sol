@@ -6,6 +6,7 @@ use solana_keccak_hasher as keccak;
 pub const COMBAT_SEED: &[u8] = b"combat";
 
 #[derive(PartialEq)]
+#[repr(u8)]
 pub enum DiceType {
     D100 = 100,
     D20 = 20,
