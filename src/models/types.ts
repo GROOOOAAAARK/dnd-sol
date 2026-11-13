@@ -55,6 +55,8 @@ export interface Attack {
 	name: string;
   damages: Damage[];
   type: AttackType;
+  /** Attack-roll bonus added to the d20 (the `+5` of `+5 (2d8+3)`). */
+  to_hit?: number;
 }
 
 // Character types

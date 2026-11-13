@@ -32,3 +32,20 @@ model AdventureCheckpoint {
   @@unique([walletPubkey, characterId, adventureId])
   @@map("adventure_checkpoints")
 }
+
+// One row per started fight. The autoincrement id doubles as the on-chain
+// encounter_id (lane seed) and nonce (monotonic across encounters).
+model CombatEncounter {
+  id           Int      @id @default(autoincrement())
+  walletPubkey String   @map("wallet_pubkey")
+  characterId  String   @map("character_id")
+  adventureId  String   @map("adventure_id")
+  monsterId    String   @map("monster_id")
+  round        Int      @default(1)
+  ticket       String?
+  signature    String?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([walletPubkey, characterId, adventureId])
+  @@map("combat_encounters")
+}
