@@ -24,6 +24,8 @@ pub enum ErrorCodes {
     CombatCommitMissing,
     #[msg("Encounter ticket is stale or replayed")]
     StaleEncounterTicket,
+    #[msg("Only the program upgrade authority can perform this action")]
+    Unauthorized,
     #[msg("Encounter ticket is too large")]
     EncounterTicketTooLarge,
     #[msg("Encounter ticket does not match the started encounter")]
