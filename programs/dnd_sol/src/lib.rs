@@ -21,12 +21,14 @@ pub mod dnd_sol {
     use super::*;
 
     pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
+        require_program_owner(&ctx.accounts.program_data, &ctx.accounts.payer)?;
         ctx.accounts.config.authority = ctx.accounts.payer.key();
         msg!("Welcome to the world of DnD Sol: {:?}", ctx.program_id);
         Ok(())
     }
 
     pub fn set_attester(ctx: Context<SetAttester>, new_attester: [u8; 64]) -> Result<()> {
+        require_program_owner(&ctx.accounts.program_data, &ctx.accounts.payer)?;
         ctx.accounts.config.attester = new_attester;
         Ok(())
     }
@@ -255,6 +257,45 @@ impl ProgramConfig {
     pub const SPACE: usize = 32 + 64;
 }
 
+/// Rejects callers that are not the program's current upgrade authority.
+///
+/// The upgrade authority is the wallet that deployed the program. Gating on it
+/// means only the program owner can initialize the config or rotate the
+/// attester; the attester itself only signs tickets and never owns the program.
+/// The check reads the live authority, so transferring the upgrade authority
+/// also transfers these rights.
+fn require_program_owner(program_data: &AccountInfo, signer: &Signer) -> Result<()> {
+    let (expected, _) = Pubkey::find_program_address(
+        &[crate::ID.as_ref()],
+        &bpf_loader_upgradeable::ID,
+    );
+    require_keys_eq!(program_data.key(), expected, ErrorCodes::Unauthorized);
+    require_keys_eq!(
+        *program_data.owner,
+        bpf_loader_upgradeable::ID,
+        ErrorCodes::Unauthorized
+    );
+
+    let data = program_data.try_borrow_data()?;
+    // `UpgradeableLoaderState::ProgramData` metadata (bincode):
+    // u32 discriminant (= 3) || u64 slot || Option<Pubkey> upgrade authority.
+    require!(data.len() >= 45, ErrorCodes::Unauthorized);
+    require!(
+        u32::from_le_bytes([data[0], data[1], data[2], data[3]]) == 3,
+        ErrorCodes::Unauthorized
+    );
+    require!(data[12] == 1, ErrorCodes::Unauthorized);
+
+    let mut authority_bytes = [0u8; 32];
+    authority_bytes.copy_from_slice(&data[13..45]);
+    require_keys_eq!(
+        Pubkey::new_from_array(authority_bytes),
+        signer.key(),
+        ErrorCodes::Unauthorized
+    );
+    Ok(())
+}
+
 #[derive(Accounts)]
 pub struct Initialize<'info> {
     #[account(mut)]
@@ -268,6 +309,9 @@ pub struct Initialize<'info> {
         bump,
     )]
     pub config: Account<'info, ProgramConfig>,
+
+    /// CHECK: verified as this program's ProgramData in `initialize`.
+    pub program_data: UncheckedAccount<'info>,
 
     pub system_program: Program<'info, System>,
 }
