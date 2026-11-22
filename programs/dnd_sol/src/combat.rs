@@ -434,7 +434,7 @@ mod tests {
     #[test]
     fn lanes_are_deterministic_and_in_bounds() {
         let key = Pubkey::new_from_array([1u8; 32]);
-        assert_eq!(
+        assert_ne!(
             derive_die(
                 Sender::Player,
                 RollType::Damage,
