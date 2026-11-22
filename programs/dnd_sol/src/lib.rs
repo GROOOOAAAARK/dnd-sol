@@ -318,10 +318,14 @@ pub struct Initialize<'info> {
 
 #[derive(Accounts)]
 pub struct SetAttester<'info> {
-    pub authority: Signer<'info>,
+    #[account(mut)]
+    pub payer: Signer<'info>,
 
-    #[account(mut, has_one = authority, seeds = [ProgramConfig::SEED], bump)]
+    #[account(mut, seeds = [ProgramConfig::SEED], bump)]
     pub config: Account<'info, ProgramConfig>,
+
+    /// CHECK: verified as this program's ProgramData in `set_attester`.
+    pub program_data: UncheckedAccount<'info>,
 }
 
 
