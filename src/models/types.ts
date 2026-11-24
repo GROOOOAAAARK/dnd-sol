@@ -256,3 +256,39 @@ export interface DiceResult {
   critical_success: boolean;
   critical_failure: boolean;
 }
+
+// Combat types
+export interface CombatMonsterPreview {
+  id: string;
+  name: string;
+  ac: number;
+  hit_points: number;
+  attacks: Attack[];
+  loot: MonsterLoot;
+}
+
+export interface PlayerAttackOption {
+  id: string;
+  label: string;
+}
+
+export interface EncounterResponse {
+  encounter_id: string;
+  nonce: string;
+  expiry: number;
+  /** Base64 signed `EncounterTicket`. */
+  ticket: string;
+  /** Base64 attester signature. */
+  signature: string;
+  playerAttacks: PlayerAttackOption[];
+  monster: CombatMonsterPreview;
+}
+
+export interface RoundPayloadResponse {
+  round: number;
+  expiry: number;
+  /** Base64 signed `RoundPayload`. */
+  payload: string;
+  /** Base64 attester signature. */
+  signature: string;
+}
