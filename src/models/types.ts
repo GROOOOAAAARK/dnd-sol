@@ -245,6 +245,8 @@ export interface AdventureStep {
   actions: GameAction[];
   is_win_step?: boolean;
   is_death_step?: boolean;
+  /** Present when the step is a fight; `monster_id` is a monster nano uid. */
+  combat?: { monster_id: string };
 }
 
 export interface DiceResult {
