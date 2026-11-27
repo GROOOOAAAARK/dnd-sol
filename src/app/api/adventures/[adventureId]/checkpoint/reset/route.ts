@@ -1,49 +1,50 @@
 import { NextResponse } from "next/server";
-
+import {
+	badRequest,
+	getAdventureId,
+	parseIdentity,
+	readJsonBody,
+	validateAdventure,
+} from "@/app/api/adventures/[adventureId]/utils";
 import type { ResetAdventureCheckpointInput } from "@/models/types";
 import { getAdventureCheckpointRepository } from "@/server/adventure-checkpoints/repository";
-import {
-  badRequest,
-  getAdventureId,
-  parseIdentity,
-  readJsonBody,
-  validateAdventure,
-} from "@/app/api/adventures/[adventureId]/utils";
+import { deleteCombatEncounters } from "@/server/combat/encounters";
 
 export async function POST(
-  request: Request,
-  props: { params: Promise<{ adventureId: string }> }
+	request: Request,
+	props: { params: Promise<{ adventureId: string }> },
 ) {
-  const adventureId = await getAdventureId(props);
+	const adventureId = await getAdventureId(props);
 
-  if (!validateAdventure(adventureId)) {
-    return NextResponse.json({ error: "Adventure not found" }, { status: 404 });
-  }
+	if (!validateAdventure(adventureId)) {
+		return NextResponse.json({ error: "Adventure not found" }, { status: 404 });
+	}
 
-  const body = await readJsonBody<ResetAdventureCheckpointInput>(request);
-  const identity = parseIdentity(body);
+	const body = await readJsonBody<ResetAdventureCheckpointInput>(request);
+	const identity = parseIdentity(body);
 
-  if (!identity) {
-    return badRequest("wallet_pubkey and character_id are required");
-  }
+	if (!identity) {
+		return badRequest("wallet_pubkey and character_id are required");
+	}
 
-  const checkpointIdentity = {
-    ...identity,
-    adventure_id: adventureId,
-  };
+	const checkpointIdentity = {
+		...identity,
+		adventure_id: adventureId,
+	};
 
-  const checkpointRepository = getAdventureCheckpointRepository();
-  const existingCheckpoint =
-    await checkpointRepository.getCheckpoint(checkpointIdentity);
+	const checkpointRepository = getAdventureCheckpointRepository();
+	const existingCheckpoint =
+		await checkpointRepository.getCheckpoint(checkpointIdentity);
 
-  if (!existingCheckpoint) {
-    return NextResponse.json(
-      { error: "Checkpoint not found" },
-      { status: 404 }
-    );
-  }
+	if (!existingCheckpoint) {
+		return NextResponse.json(
+			{ error: "Checkpoint not found" },
+			{ status: 404 },
+		);
+	}
 
-  await checkpointRepository.deleteCheckpoint(checkpointIdentity);
+	await checkpointRepository.deleteCheckpoint(checkpointIdentity);
+	await deleteCombatEncounters(checkpointIdentity);
 
-  return NextResponse.json({ success: true });
+	return NextResponse.json({ success: true });
 }
