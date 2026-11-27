@@ -283,7 +283,7 @@ pub fn resolve_round(input: RoundInput) -> RoundOutcome {
         input.round,
         0,
         0,
-        0,
+        DiceType::D20 as u8,
         None,
     );
     let monster_hit_success = hit(
