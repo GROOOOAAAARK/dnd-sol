@@ -226,12 +226,18 @@ fn hit(roll: u8, bonus: i16, target_ac: u8) -> bool {
     }
 }
 
-fn attack_damage<F: Fn(u8, u8, u8) -> u8>(attack: &Attack, die_value: F) -> u16 {
+fn attack_damage<F: Fn(u8, u8, u8) -> u8>(
+    attack: &Attack,
+    die_value: F,
+    dice_out: &mut Vec<u8>,
+) -> u16 {
     let mut total: i16 = 0;
     for (roll_index, roll) in attack.damages.iter().enumerate() {
         let mut group_total: i16 = roll.damage_bonus;
         for die_index in 0..roll.num_die {
-            group_total += die_value(roll_index as u8, die_index, roll.die) as i16;
+            let value = die_value(roll_index as u8, die_index, roll.die);
+            dice_out.push(value);
+            group_total += value as i16;
         }
         total += group_total;
     }
