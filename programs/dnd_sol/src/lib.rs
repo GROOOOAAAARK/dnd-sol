@@ -1,6 +1,7 @@
 #![allow(unexpected_cfgs)]
 
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::bpf_loader_upgradeable;
 use anchor_lang::{AnchorDeserialize, AnchorSerialize};
 
 pub mod attestation;
@@ -9,7 +10,7 @@ pub mod combat;
 pub mod error_codes;
 pub mod inventory;
 pub mod item;
-use attestation::{verify_ticket, EncounterTicket};
+use attestation::{verify_ticket, EncounterTicket, RoundPayload};
 use character::{Character, CharacterAccount, CharacterAttributes};
 use combat::{CombatRoundResult, CombatSession, CombatStatus, DiceType, COMBAT_SEED};
 use error_codes::ErrorCodes;
@@ -265,10 +266,8 @@ impl ProgramConfig {
 /// The check reads the live authority, so transferring the upgrade authority
 /// also transfers these rights.
 fn require_program_owner(program_data: &AccountInfo, signer: &Signer) -> Result<()> {
-    let (expected, _) = Pubkey::find_program_address(
-        &[crate::ID.as_ref()],
-        &bpf_loader_upgradeable::ID,
-    );
+    let (expected, _) =
+        Pubkey::find_program_address(&[crate::ID.as_ref()], &bpf_loader_upgradeable::ID);
     require_keys_eq!(program_data.key(), expected, ErrorCodes::Unauthorized);
     require_keys_eq!(
         *program_data.owner,
