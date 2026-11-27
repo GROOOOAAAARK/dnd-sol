@@ -1,5 +1,10 @@
 import { DiceType } from "@/lib/diceTypes";
-import { AttackType, DamageModifierType, DamageType, type Monster } from "@/models/types";
+import {
+	AttackType,
+	DamageModifierType,
+	DamageType,
+	type Monster,
+} from "@/models/types";
 
 const Mimic: Monster = {
 	name: "Mimic",
@@ -20,42 +25,44 @@ const Mimic: Monster = {
 		{
 			name: "bite",
 			type: AttackType.Melee,
-      damages: [
-        {
-       		damage_type: DamageType.Piercing,
-          damage_bonus: 3,
-          dice_roll: {
-            die: DiceType.D8,
-            num_die: 2,
-          },
-        }
-			]
+			to_hit: 5,
+			damages: [
+				{
+					damage_type: DamageType.Piercing,
+					damage_bonus: 3,
+					dice_roll: {
+						die: DiceType.D8,
+						num_die: 2,
+					},
+				},
+			],
 		},
-    {
-      name: "pseudopod",
-      type: AttackType.Melee,
-      damages: [
-        {
-          damage_type: DamageType.Bludgeoning,
-          damage_bonus: 3,
-          dice_roll: {
-            die: DiceType.D8,
-            num_die: 1,
-          },
-        },
-      ],
+		{
+			name: "pseudopod",
+			type: AttackType.Melee,
+			to_hit: 5,
+			damages: [
+				{
+					damage_type: DamageType.Bludgeoning,
+					damage_bonus: 3,
+					dice_roll: {
+						die: DiceType.D8,
+						num_die: 1,
+					},
+				},
+			],
 		},
-  ],
-  damage_modifiers: [
-    {
-      type: DamageModifierType.Immunity,
-      damages: [DamageType.Acid]
-    }
-	]
+	],
+	damage_modifiers: [
+		{
+			type: DamageModifierType.Immunity,
+			damages: [DamageType.Acid],
+		},
+	],
 };
 
 const Zombie: Monster = {
-  name: "Zombie",
+	name: "Zombie",
 	monster_stats: {
 		strength: 13,
 		dexterity: 6,
@@ -73,28 +80,25 @@ const Zombie: Monster = {
 		{
 			name: "Melee",
 			type: AttackType.Melee,
-      damages: [
-        {
-       		damage_type: DamageType.Bludgeoning,
-          damage_bonus: 1,
-          dice_roll: {
-            die: DiceType.D8,
-            num_die: 2,
-          },
-        }
-			]
+			to_hit: 3,
+			damages: [
+				{
+					damage_type: DamageType.Bludgeoning,
+					damage_bonus: 1,
+					dice_roll: {
+						die: DiceType.D8,
+						num_die: 2,
+					},
+				},
+			],
 		},
-   ],
-   damage_modifiers: [
-     {
-       type: DamageModifierType.Immunity,
-       damages: [DamageType.Acid]
-     }
-	]
-
-}
-
-export {
-  Mimic,
-  Zombie,
+	],
+	damage_modifiers: [
+		{
+			type: DamageModifierType.Immunity,
+			damages: [DamageType.Acid],
+		},
+	],
 };
+
+export { Mimic, Zombie };
