@@ -533,9 +533,224 @@ export function useSolanaService() {
 		throw lastError;
 	};
 
-  return {
-    createCharacter,
-    getCharacters,
-    performDiceAction,
-  }
+	const getConfigPda = () =>
+		PublicKey.findProgramAddressSync(
+			[Buffer.from("config")],
+			dndSolProgramId,
+		)[0];
+
+	const getCombatSessionPda = (characterPk: PublicKey) =>
+		PublicKey.findProgramAddressSync(
+			[Buffer.from("combat"), characterPk.toBuffer()],
+			dndSolProgramId,
+		)[0];
+
+	const combatAccounts = (
+		characterPk: PublicKey,
+		randomnessAccountData: PublicKey,
+	) => ({
+		player: wallet!.publicKey,
+		config: getConfigPda(),
+		character: characterPk,
+		session: getCombatSessionPda(characterPk),
+		diceRollingState: getDiceRollingStatePda(),
+		randomnessAccountData,
+		diceRollingProgram: diceRollingProgramId,
+	});
+
+	const startCombat = async (
+		ticketBase64: string,
+		signatureBase64: string,
+	): Promise<void> => {
+		if (!wallet || !program || !provider) {
+			throw new Error("Wallet not connected");
+		}
+		if (!selectedCharacter?.id) {
+			throw new Error("No selected character");
+		}
+
+		const characterPk = new PublicKey(selectedCharacter.id);
+
+		await program.methods
+			.startCombat(
+				Buffer.from(ticketBase64, "base64"),
+				Array.from(Buffer.from(signatureBase64, "base64")),
+			)
+			.accounts({
+				player: wallet.publicKey,
+				config: getConfigPda(),
+				character: characterPk,
+				session: getCombatSessionPda(characterPk),
+				systemProgram: SystemProgram.programId,
+			})
+			.rpc();
+	};
+
+	const combatCommit = async (
+		payloadBase64: string,
+		signatureBase64: string,
+	): Promise<void> => {
+		if (!wallet || !program || !provider) {
+			throw new Error("Wallet not connected");
+		}
+		if (!selectedCharacter?.id) {
+			throw new Error("No selected character");
+		}
+
+		const characterPk = new PublicKey(selectedCharacter.id);
+		await ensureDiceRollingState();
+
+		const buildIx = (randomnessAccountData: PublicKey) =>
+			program.methods
+				.combatCommit(
+					Buffer.from(payloadBase64, "base64"),
+					Array.from(Buffer.from(signatureBase64, "base64")),
+				)
+				.accounts(combatAccounts(characterPk, randomnessAccountData))
+				.instruction();
+
+		if (isLocalnet) {
+			await provider.sendAndConfirm(
+				new Transaction().add(await buildIx(SYSVAR_SLOT_HASHES_PUBKEY)),
+				[],
+			);
+			persistRandomnessAccount(
+				selectedCharacter.id,
+				LOCALNET_RANDOMNESS_PLACEHOLDER,
+			);
+			return;
+		}
+
+		const { Randomness, queue, switchboardProgram } =
+			await getSwitchboardContext();
+		const [randomness, randomnessKeypair, randomnessIxs] =
+			await Randomness.createAndCommitIxs(
+				switchboardProgram,
+				queue,
+				wallet.publicKey,
+			);
+
+		await provider.sendAndConfirm(
+			new Transaction().add(...randomnessIxs, await buildIx(randomness.pubkey)),
+			[randomnessKeypair],
+		);
+
+		persistRandomnessAccount(
+			selectedCharacter.id,
+			randomness.pubkey.toBase58(),
+		);
+	};
+
+	const combatReveal = async (
+		payloadBase64: string,
+	): Promise<CombatRoundResult> => {
+		if (!wallet || !program || !provider) {
+			throw new Error("Wallet not connected");
+		}
+		if (!selectedCharacter?.id) {
+			throw new Error("No selected character");
+		}
+
+		const characterPk = new PublicKey(selectedCharacter.id);
+		const payloadBytes = Buffer.from(payloadBase64, "base64");
+
+		if (isLocalnet) {
+			const signature = await program.methods
+				.combatReveal(payloadBytes)
+				.accounts(combatAccounts(characterPk, SYSVAR_SLOT_HASHES_PUBKEY))
+				.rpc();
+
+			clearRandomnessAccount(selectedCharacter.id);
+
+			const raw = await parseReturnFromTx<AnchorCombatRoundResult>(
+				signature,
+				"CombatRoundResult",
+			);
+			return anchorCombatRoundResultToModel(raw);
+		}
+
+		const randomnessAccount = readRandomnessAccount(selectedCharacter.id);
+		if (!randomnessAccount) {
+			throw new Error("No pending randomness account for selected character");
+		}
+
+		const { Randomness, switchboardProgram, randomnessGatewayUrl } =
+			await getSwitchboardContext();
+		const randomness = new Randomness(
+			switchboardProgram,
+			new PublicKey(randomnessAccount),
+		);
+
+		let lastError: unknown;
+		for (let attempt = 1; attempt <= 5; attempt++) {
+			try {
+				const revealRandomnessIx = await buildRevealRandomnessIx(
+					randomness,
+					wallet.publicKey,
+					randomnessGatewayUrl,
+				);
+				const signature = await program.methods
+					.combatReveal(payloadBytes)
+					.accounts(combatAccounts(characterPk, randomness.pubkey))
+					.preInstructions([revealRandomnessIx])
+					.rpc();
+
+				clearRandomnessAccount(selectedCharacter.id);
+
+				const raw = await parseReturnFromTx<AnchorCombatRoundResult>(
+					signature,
+					"CombatRoundResult",
+				);
+				return anchorCombatRoundResultToModel(raw);
+			} catch (error) {
+				lastError = error;
+				await sleep(REVEAL_RETRY_BACKOFF_MS);
+			}
+		}
+
+		throw lastError;
+	};
+
+	const getCombatSession = async (): Promise<CombatSession | null> => {
+		if (!program || !selectedCharacter?.id) {
+			return null;
+		}
+
+		const characterPk = new PublicKey(selectedCharacter.id);
+		const account = await (program.account as any).combatSession.fetchNullable(
+			getCombatSessionPda(characterPk),
+		);
+
+		return account
+			? anchorCombatSessionToModel(account as AnchorCombatSession)
+			: null;
+	};
+
+	/** Decode dice PDA account data — debug / inspection only; use instruction return for gameplay. */
+	const decodeDiceRollingState = (data: Buffer): DiceResult => {
+		const diceCoder = new BorshAccountsCoder(DiceRollIDL as any);
+		const diceState = diceCoder.decode(
+			"DiceRollingState",
+			data,
+		) as AnchorDiceRollingState;
+		return anchorDiceRollingStateToDiceResult(diceState);
+	};
+	const performDiceAction = async (
+		diceSize: number,
+		successFloor: number,
+		bonus: number,
+	): Promise<DiceResult> => {
+		await doAction(diceSize, successFloor, bonus);
+		return revealActionResult(diceSize);
+	};
+
+	return {
+		createCharacter,
+		getCharacters,
+		performDiceAction,
+		startCombat,
+		combatCommit,
+		combatReveal,
+		getCombatSession,
+	};
 }
