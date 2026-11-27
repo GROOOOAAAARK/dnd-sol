@@ -1,93 +1,118 @@
-"use client"
+"use client";
 
-import { BorshAccountsCoder, BorshCoder, Program, utils } from "@coral-xyz/anchor"
-import { PublicKey, SystemProgram, SYSVAR_SLOT_HASHES_PUBKEY, Transaction } from "@solana/web3.js"
-import type { Character, CharacterClassValue, CharacterRaceValue, DiceResult } from "@/models/types"
 import {
-  anchorDiceResultToModel,
-  anchorDiceRollingStateToDiceResult,
-  type AnchorDiceResult,
-  type AnchorDiceRollingState,
-  type RpcTransactionMetaWithReturn,
-} from "@/models/solana_types"
-import DndSolIDL from "@/idl/dnd_sol.json"
-import DiceRollIDL from "@/idl/dice_rolling.json"
-import { useAnchorWallet } from "@solana/wallet-adapter-react"
-import { useCharacterStore } from "@/stores/selectedCharacter.store"
-import { useAnchorProvider } from "@/hooks/useAnchorProvider"
-import { useConnection } from "@solana/wallet-adapter-react"
-import { useMemo } from "react"
-import * as switchboard from "@switchboard-xyz/on-demand"
-import bs58 from "bs58"
+	BorshAccountsCoder,
+	BorshCoder,
+	Program,
+	utils,
+} from "@coral-xyz/anchor";
+import { useAnchorWallet, useConnection } from "@solana/wallet-adapter-react";
+import {
+	PublicKey,
+	SYSVAR_SLOT_HASHES_PUBKEY,
+	SystemProgram,
+	Transaction,
+} from "@solana/web3.js";
+import * as switchboard from "@switchboard-xyz/on-demand";
+import bs58 from "bs58";
+import { useMemo } from "react";
+import { useAnchorProvider } from "@/hooks/useAnchorProvider";
+import DiceRollIDL from "@/idl/dice_rolling.json";
+import DndSolIDL from "@/idl/dnd_sol.json";
+import {
+	type AnchorCombatRoundResult,
+	type AnchorCombatSession,
+	type AnchorDiceResult,
+	type AnchorDiceRollingState,
+	anchorCombatRoundResultToModel,
+	anchorCombatSessionToModel,
+	anchorDiceResultToModel,
+	anchorDiceRollingStateToDiceResult,
+	type CombatRoundResult,
+	type CombatSession,
+	type RpcTransactionMetaWithReturn,
+} from "@/models/solana_types";
+import type {
+	Character,
+	CharacterClassValue,
+	CharacterRaceValue,
+	DiceResult,
+} from "@/models/types";
+import { useCharacterStore } from "@/stores/selectedCharacter.store";
 
-const randomnessStorageKey = (characterId: string) => `dnd-randomness:${characterId}`
-const REVEAL_RETRY_BACKOFF_MS = 1500
-const TX_RETURN_FETCH_ATTEMPTS = 5
-const TX_RETURN_FETCH_BACKOFF_MS = 300
-const LOCALNET_RANDOMNESS_PLACEHOLDER = "localnet-mock"
-const isLocalnet = process.env.NEXT_PUBLIC_SOLANA_CLUSTER === "localnet"
-const dndTypesCoder = new BorshCoder(DndSolIDL as any).types
+const randomnessStorageKey = (characterId: string) =>
+	`dnd-randomness:${characterId}`;
+const REVEAL_RETRY_BACKOFF_MS = 1500;
+const TX_RETURN_FETCH_ATTEMPTS = 5;
+const TX_RETURN_FETCH_BACKOFF_MS = 300;
+const LOCALNET_RANDOMNESS_PLACEHOLDER = "localnet-mock";
+const isLocalnet = process.env.NEXT_PUBLIC_SOLANA_CLUSTER === "localnet";
+const dndTypesCoder = new BorshCoder(DndSolIDL as any).types;
 
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const assertValidDiceResult = (result: DiceResult, diceSize: number): void => {
-  if (result.raw_result < 1 || result.raw_result > diceSize) {
-    throw new Error(
-      `Reveal returned invalid raw_result: ${result.raw_result} (expected 1..${diceSize})`,
-    )
-  }
-}
+	if (result.raw_result < 1 || result.raw_result > diceSize) {
+		throw new Error(
+			`Reveal returned invalid raw_result: ${result.raw_result} (expected 1..${diceSize})`,
+		);
+	}
+};
 
 export function useSolanaService() {
-  const { connection } = useConnection()
-  const wallet = useAnchorWallet()
-  const provider = useAnchorProvider()
-  const { selectedCharacter } = useCharacterStore()
-  const dndSolProgramId = new PublicKey(process.env.NEXT_PUBLIC_DND_PROGRAM_ADDRESS!)
-  const diceRollingProgramId = new PublicKey(process.env.NEXT_PUBLIC_DICE_ROLLING_PROGRAM_ADDRESS!)
+	const { connection } = useConnection();
+	const wallet = useAnchorWallet();
+	const provider = useAnchorProvider();
+	const { selectedCharacter } = useCharacterStore();
+	const dndSolProgramId = new PublicKey(
+		process.env.NEXT_PUBLIC_DND_PROGRAM_ADDRESS!,
+	);
+	const diceRollingProgramId = new PublicKey(
+		process.env.NEXT_PUBLIC_DICE_ROLLING_PROGRAM_ADDRESS!,
+	);
 
-  const program = useMemo(() => {
-    if (!provider) return null
-    return new Program(DndSolIDL as any, provider)
-  }, [provider])
+	const program = useMemo(() => {
+		if (!provider) return null;
+		return new Program(DndSolIDL as any, provider);
+	}, [provider]);
 
-  const diceRollProgram = useMemo(() => {
-    if (!provider) return null
-    return new Program(DiceRollIDL as any, provider)
-  }, [provider])
+	const diceRollProgram = useMemo(() => {
+		if (!provider) return null;
+		return new Program(DiceRollIDL as any, provider);
+	}, [provider]);
 
-  const getDiceRollingStatePda = () => {
-    if (!wallet) {
-      throw new Error("Wallet not connected")
-    }
-    return PublicKey.findProgramAddressSync(
-      [Buffer.from("dice_rolling"), wallet.publicKey.toBuffer()],
-      diceRollingProgramId,
-    )[0]
-  }
+	const getDiceRollingStatePda = () => {
+		if (!wallet) {
+			throw new Error("Wallet not connected");
+		}
+		return PublicKey.findProgramAddressSync(
+			[Buffer.from("dice_rolling"), wallet.publicKey.toBuffer()],
+			diceRollingProgramId,
+		)[0];
+	};
 
-  const ensureDiceRollingState = async () => {
-    if (!wallet || !diceRollProgram) {
-      throw new Error("Wallet not connected")
-    }
+	const ensureDiceRollingState = async () => {
+		if (!wallet || !diceRollProgram) {
+			throw new Error("Wallet not connected");
+		}
 
-    const diceRollingStatePda = getDiceRollingStatePda()
-    const existing = await connection.getAccountInfo(diceRollingStatePda)
-    if (existing) {
-      return diceRollingStatePda
-    }
+		const diceRollingStatePda = getDiceRollingStatePda();
+		const existing = await connection.getAccountInfo(diceRollingStatePda);
+		if (existing) {
+			return diceRollingStatePda;
+		}
 
-    await diceRollProgram.methods
-      .initialize()
-      .accounts({
-        diceRolling: diceRollingStatePda,
-        user: wallet.publicKey,
-        systemProgram: SystemProgram.programId,
-      })
-      .rpc()
+		await diceRollProgram.methods
+			.initialize()
+			.accounts({
+				diceRolling: diceRollingStatePda,
+				user: wallet.publicKey,
+				systemProgram: SystemProgram.programId,
+			})
+			.rpc();
 
-    return diceRollingStatePda
-  }
+		return diceRollingStatePda;
+	};
 
   const getSwitchboardContext = async () => {
     if (!provider) {
@@ -170,131 +195,158 @@ export function useSolanaService() {
     )
   }
 
-  const persistRandomnessAccount = (characterId: string, randomnessAccount: string) => {
-    sessionStorage.setItem(randomnessStorageKey(characterId), randomnessAccount)
-  }
+	const persistRandomnessAccount = (
+		characterId: string,
+		randomnessAccount: string,
+	) => {
+		sessionStorage.setItem(
+			randomnessStorageKey(characterId),
+			randomnessAccount,
+		);
+	};
 
-  const readRandomnessAccount = (characterId: string): string | null => {
-    return sessionStorage.getItem(randomnessStorageKey(characterId))
-  }
+	const readRandomnessAccount = (characterId: string): string | null => {
+		return sessionStorage.getItem(randomnessStorageKey(characterId));
+	};
 
-  const clearRandomnessAccount = (characterId: string) => {
-    sessionStorage.removeItem(randomnessStorageKey(characterId))
-  }
+	const clearRandomnessAccount = (characterId: string) => {
+		sessionStorage.removeItem(randomnessStorageKey(characterId));
+	};
 
-  const createCharacter = async (character: Character): Promise<void> => {
-    if (!wallet || !program) {
-      throw new Error("Wallet not connected")
-    }
+	const createCharacter = async (character: Character): Promise<void> => {
+		if (!wallet || !program) {
+			throw new Error("Wallet not connected");
+		}
 
-    const [characterAccountPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from("character"), wallet.publicKey.toBuffer(), Buffer.from(character.name)],
-      dndSolProgramId,
-    )
+		const [characterAccountPda] = PublicKey.findProgramAddressSync(
+			[
+				Buffer.from("character"),
+				wallet.publicKey.toBuffer(),
+				Buffer.from(character.name),
+			],
+			dndSolProgramId,
+		);
 
-    await program.methods
-      .createCharacter(
-        character.name,
-        character.character_class,
-        character.race,
-        character.stats.strength,
-        character.stats.dexterity,
-        character.stats.constitution,
-        character.stats.intelligence,
-        character.stats.wisdom,
-        character.stats.charisma,
-      )
-      .accounts({
-        player: wallet.publicKey,
-        character: characterAccountPda,
-        systemProgram: SystemProgram.programId,
-      })
-      .rpc()
-  }
+		await program.methods
+			.createCharacter(
+				character.name,
+				character.character_class,
+				character.race,
+				character.stats.strength,
+				character.stats.dexterity,
+				character.stats.constitution,
+				character.stats.intelligence,
+				character.stats.wisdom,
+				character.stats.charisma,
+			)
+			.accounts({
+				player: wallet.publicKey,
+				character: characterAccountPda,
+				systemProgram: SystemProgram.programId,
+			})
+			.rpc();
+	};
 
-  const getCharacters = async (): Promise<Character[]> => {
-    if (!wallet || !program) {
-      throw new Error("Wallet not connected")
-    }
+	const getCharacters = async (): Promise<Character[]> => {
+		if (!wallet || !program) {
+			throw new Error("Wallet not connected");
+		}
 
-    const coder = new BorshAccountsCoder(DndSolIDL as any)
-    const accountsResponse = await connection.getProgramAccounts(dndSolProgramId, {
-      commitment: "confirmed",
-    })
+		const coder = new BorshAccountsCoder(DndSolIDL as any);
+		const accountsResponse = await connection.getProgramAccounts(
+			dndSolProgramId,
+			{
+				commitment: "confirmed",
+			},
+		);
 
-    const decodedCharacters = accountsResponse.map((accountInfo) => {
-      try {
-        const decoded = coder.decode("CharacterAccount", accountInfo.account.data)
-        const player = decoded.player.toBase58()
+		const decodedCharacters = accountsResponse.map((accountInfo) => {
+			try {
+				const decoded = coder.decode(
+					"CharacterAccount",
+					accountInfo.account.data,
+				);
+				const player = decoded.player.toBase58();
 
-        if (player !== wallet.publicKey.toBase58()) {
-          return null
-        }
+				if (player !== wallet.publicKey.toBase58()) {
+					return null;
+				}
 
-        const getEnumVariant = <T extends string>(enumObj: unknown): T => {
-          if (typeof enumObj === "string") return enumObj as T
-          if (typeof enumObj === "object" && enumObj !== null) {
-            const keys = Object.keys(enumObj)
-            return (keys[0] ?? "") as T
-          }
-          return String(enumObj) as T
-        }
+				const getEnumVariant = <T extends string>(enumObj: unknown): T => {
+					if (typeof enumObj === "string") return enumObj as T;
+					if (typeof enumObj === "object" && enumObj !== null) {
+						const keys = Object.keys(enumObj);
+						return (keys[0] ?? "") as T;
+					}
+					return String(enumObj) as T;
+				};
 
-        const character: Character = {
-          id: accountInfo.pubkey.toString(),
-          name: String(decoded.character.attributes.name),
-          race: getEnumVariant<CharacterRaceValue>(decoded.character.attributes.race),
-          character_class: getEnumVariant<CharacterClassValue>(
-            decoded.character.attributes.class,
-          ),
-          level: Number(decoded.character.attributes.level),
-          experience: Number(decoded.character.attributes.experience),
-          stats: {
-            strength: Number(decoded.character.stats.strength),
-            dexterity: Number(decoded.character.stats.dexterity),
-            constitution: Number(decoded.character.stats.constitution),
-            intelligence: Number(decoded.character.stats.intelligence),
-            wisdom: Number(decoded.character.stats.wisdom),
-            charisma: Number(decoded.character.stats.charisma),
-          },
-        }
+				const character: Character = {
+					id: accountInfo.pubkey.toString(),
+					name: String(decoded.character.attributes.name),
+					race: getEnumVariant<CharacterRaceValue>(
+						decoded.character.attributes.race,
+					),
+					character_class: getEnumVariant<CharacterClassValue>(
+						decoded.character.attributes.class,
+					),
+					level: Number(decoded.character.attributes.level),
+					experience: Number(decoded.character.attributes.experience),
+					stats: {
+						strength: Number(decoded.character.stats.strength),
+						dexterity: Number(decoded.character.stats.dexterity),
+						constitution: Number(decoded.character.stats.constitution),
+						intelligence: Number(decoded.character.stats.intelligence),
+						wisdom: Number(decoded.character.stats.wisdom),
+						charisma: Number(decoded.character.stats.charisma),
+					},
+				};
 
-        return character
-      } catch (decodeError) {
-        console.error("Failed to decode account:", decodeError)
-        return null
-      }
-    })
+				return character;
+			} catch (decodeError) {
+				console.error("Failed to decode account:", decodeError);
+				return null;
+			}
+		});
 
-    return decodedCharacters.filter((character): character is Character => character !== null)
-  }
+		return decodedCharacters.filter(
+			(character): character is Character => character !== null,
+		);
+	};
 
-  const doAction = async (diceSize: number, successFloor: number, bonus: number): Promise<void> => {
-    if (!wallet || !program || !provider) {
-      throw new Error("Wallet not connected")
-    }
-    if (!selectedCharacter?.id) {
-      throw new Error("No selected character")
-    }
+	const doAction = async (
+		diceSize: number,
+		successFloor: number,
+		bonus: number,
+	): Promise<void> => {
+		if (!wallet || !program || !provider) {
+			throw new Error("Wallet not connected");
+		}
+		if (!selectedCharacter?.id) {
+			throw new Error("No selected character");
+		}
 
-    const diceRollingStatePda = await ensureDiceRollingState()
+		const diceRollingStatePda = await ensureDiceRollingState();
 
-    if (isLocalnet) {
-      const actionIx = await program.methods
-        .doAction(diceSize, successFloor, bonus)
-        .accounts({
-          player: wallet.publicKey,
-          character: new PublicKey(selectedCharacter.id),
-          diceRollingState: diceRollingStatePda,
-          randomnessAccountData: SYSVAR_SLOT_HASHES_PUBKEY,
-          diceRollingProgram: diceRollingProgramId,
-        })
-        .instruction()
+		if (isLocalnet) {
+			const actionIx = await program.methods
+				.doAction(diceSize, successFloor, bonus)
+				.accounts({
+					player: wallet.publicKey,
+					character: new PublicKey(selectedCharacter.id),
+					diceRollingState: diceRollingStatePda,
+					randomnessAccountData: SYSVAR_SLOT_HASHES_PUBKEY,
+					diceRollingProgram: diceRollingProgramId,
+				})
+				.instruction();
 
-      await provider.sendAndConfirm(new Transaction().add(actionIx), [])
-      persistRandomnessAccount(selectedCharacter.id, LOCALNET_RANDOMNESS_PLACEHOLDER)
-      return
-    }
+			await provider.sendAndConfirm(new Transaction().add(actionIx), []);
+			persistRandomnessAccount(
+				selectedCharacter.id,
+				LOCALNET_RANDOMNESS_PLACEHOLDER,
+			);
+			return;
+		}
 
     const { Randomness, queue, switchboardProgram } = await getSwitchboardContext()
     const [randomness, randomnessKeypair, randomnessIxs] = await Randomness.createAndCommitIxs(
@@ -322,52 +374,67 @@ export function useSolanaService() {
     persistRandomnessAccount(selectedCharacter.id, randomness.pubkey.toBase58())
   }
 
-  const parseRevealReturnFromTx = async (signature: string): Promise<AnchorDiceResult> => {
-    const expectedProgramId = dndSolProgramId.toBase58()
-    let lastError: Error | undefined
+	const parseReturnFromTx = async <T>(
+		signature: string,
+		typeName: string,
+	): Promise<T> => {
+		const expectedProgramId = dndSolProgramId.toBase58();
+		let lastError: Error | undefined;
 
-    for (let attempt = 1; attempt <= TX_RETURN_FETCH_ATTEMPTS; attempt++) {
-      const tx = await connection.getTransaction(signature, {
-        commitment: "confirmed",
-        maxSupportedTransactionVersion: 0,
-      })
+		for (let attempt = 1; attempt <= TX_RETURN_FETCH_ATTEMPTS; attempt++) {
+			const tx = await connection.getTransaction(signature, {
+				commitment: "confirmed",
+				maxSupportedTransactionVersion: 0,
+			});
 
-      if (tx?.meta?.err) {
-        throw new Error(`Reveal transaction failed: ${JSON.stringify(tx.meta.err)}`)
-      }
+			if (tx?.meta?.err) {
+				throw new Error(
+					`Reveal transaction failed: ${JSON.stringify(tx.meta.err)}`,
+				);
+			}
 
-      const returnData = (tx?.meta as RpcTransactionMetaWithReturn | null | undefined)?.returnData
-      if (returnData) {
-        if (returnData.programId !== expectedProgramId) {
-          throw new Error(
-            `Unexpected return program: ${returnData.programId} (expected ${expectedProgramId})`,
-          )
-        }
+			const returnData = (
+				tx?.meta as RpcTransactionMetaWithReturn | null | undefined
+			)?.returnData;
+			if (returnData && returnData.programId === expectedProgramId) {
+				const [payload] = returnData.data;
+				const bytes = utils.bytes.base64.decode(payload);
+				return dndTypesCoder.decode(typeName, bytes) as T;
+			}
 
-        const [payload] = returnData.data
-        const bytes = utils.bytes.base64.decode(payload)
-        return dndTypesCoder.decode("DiceResult", bytes) as AnchorDiceResult
-      }
+			// Fallback for RPCs that omit `meta.returnData` but keep the program
+			// return in the logs: "Program return: <programId> <base64>".
+			const returnPrefix = `Program return: ${expectedProgramId} `;
+			const returnLog = (
+				tx?.meta as RpcTransactionMetaWithReturn | null | undefined
+			)?.logMessages?.find((line) => line.startsWith(returnPrefix));
+			if (returnLog) {
+				const payload = returnLog.slice(returnPrefix.length).trim();
+				const bytes = utils.bytes.base64.decode(payload);
+				return dndTypesCoder.decode(typeName, bytes) as T;
+			}
 
-      lastError = new Error("Reveal transaction return data not found")
-      await sleep(TX_RETURN_FETCH_BACKOFF_MS)
-    }
+			lastError = new Error("Reveal transaction return data not found");
+			await sleep(TX_RETURN_FETCH_BACKOFF_MS);
+		}
 
-    throw lastError ?? new Error("Reveal transaction return data not found")
-  }
+		throw lastError ?? new Error("Reveal transaction return data not found");
+	};
 
-  const revealAccounts = (characterPk: PublicKey, diceRollingStatePda: PublicKey, randomnessAccountData: PublicKey) => ({
-    character: characterPk,
-    player: wallet!.publicKey,
-    diceRollingState: diceRollingStatePda,
-    randomnessAccountData,
-    diceRollingProgram: diceRollingProgramId,
-  })
+	const parseRevealReturnFromTx = (signature: string) =>
+		parseReturnFromTx<AnchorDiceResult>(signature, "DiceResult");
 
-  const logDiceRollingStateDebug = async (diceRollingStatePda: PublicKey, instructionResult: DiceResult) => {
-    if (process.env.NODE_ENV === "production") {
-      return
-    }
+	const revealAccounts = (
+		characterPk: PublicKey,
+		diceRollingStatePda: PublicKey,
+		randomnessAccountData: PublicKey,
+	) => ({
+		character: characterPk,
+		player: wallet!.publicKey,
+		diceRollingState: diceRollingStatePda,
+		randomnessAccountData,
+		diceRollingProgram: diceRollingProgramId,
+	});
 
     const diceAccountInfo = await connection.getAccountInfo(diceRollingStatePda, "confirmed")
     if (!diceAccountInfo) {
@@ -388,74 +455,83 @@ export function useSolanaService() {
       throw new Error("No selected character")
     }
 
-    const randomnessAccount = readRandomnessAccount(selectedCharacter.id)
-    if (!randomnessAccount) {
-      throw new Error("No pending randomness account for selected character")
-    }
+	const revealActionResult = async (diceSize: number): Promise<DiceResult> => {
+		if (!wallet || !program || !diceRollProgram || !provider) {
+			throw new Error("Wallet not connected");
+		}
+		if (!selectedCharacter?.id) {
+			throw new Error("No selected character");
+		}
 
-    const diceRollingStatePda = getDiceRollingStatePda()
-    const characterPk = new PublicKey(selectedCharacter.id)
+		const randomnessAccount = readRandomnessAccount(selectedCharacter.id);
+		if (!randomnessAccount) {
+			throw new Error("No pending randomness account for selected character");
+		}
 
-    if (isLocalnet) {
-      const signature = await program.methods
-        .revealActionResult()
-        .accounts(revealAccounts(characterPk, diceRollingStatePda, SYSVAR_SLOT_HASHES_PUBKEY))
-        .rpc()
+		const diceRollingStatePda = getDiceRollingStatePda();
+		const characterPk = new PublicKey(selectedCharacter.id);
 
-      clearRandomnessAccount(selectedCharacter.id)
+		if (isLocalnet) {
+			const signature = await program.methods
+				.revealActionResult()
+				.accounts(
+					revealAccounts(
+						characterPk,
+						diceRollingStatePda,
+						SYSVAR_SLOT_HASHES_PUBKEY,
+					),
+				)
+				.rpc();
 
-      const result = anchorDiceResultToModel(await parseRevealReturnFromTx(signature))
-      assertValidDiceResult(result, diceSize)
-      await logDiceRollingStateDebug(diceRollingStatePda, result)
-      return result
-    }
+			clearRandomnessAccount(selectedCharacter.id);
 
-    const { Randomness, switchboardProgram, randomnessGatewayUrl } = await getSwitchboardContext()
-    const randomness = new Randomness(switchboardProgram, new PublicKey(randomnessAccount))
+			const result = anchorDiceResultToModel(
+				await parseRevealReturnFromTx(signature),
+			);
+			assertValidDiceResult(result, diceSize);
+			await logDiceRollingStateDebug(diceRollingStatePda, result);
+			return result;
+		}
 
-    let lastError: unknown
-    for (let attempt = 1; attempt <= 5; attempt++) {
-      try {
-        const revealRandomnessIx = await buildRevealRandomnessIx(
-          randomness,
-          wallet.publicKey,
-          randomnessGatewayUrl,
-        )
-        const signature = await program.methods
-          .revealActionResult()
-          .accounts(revealAccounts(characterPk, diceRollingStatePda, randomness.pubkey))
-          .preInstructions([revealRandomnessIx])
-          .rpc()
+		const { Randomness, switchboardProgram, randomnessGatewayUrl } =
+			await getSwitchboardContext();
+		const randomness = new Randomness(
+			switchboardProgram,
+			new PublicKey(randomnessAccount),
+		);
 
-        clearRandomnessAccount(selectedCharacter.id)
+		let lastError: unknown;
+		for (let attempt = 1; attempt <= 5; attempt++) {
+			try {
+				const revealRandomnessIx = await buildRevealRandomnessIx(
+					randomness,
+					wallet.publicKey,
+					randomnessGatewayUrl,
+				);
+				const signature = await program.methods
+					.revealActionResult()
+					.accounts(
+						revealAccounts(characterPk, diceRollingStatePda, randomness.pubkey),
+					)
+					.preInstructions([revealRandomnessIx])
+					.rpc();
 
-        const result = anchorDiceResultToModel(await parseRevealReturnFromTx(signature))
-        assertValidDiceResult(result, diceSize)
-        await logDiceRollingStateDebug(diceRollingStatePda, result)
-        return result
-      } catch (error) {
-        lastError = error
-        await sleep(REVEAL_RETRY_BACKOFF_MS)
-      }
-    }
+				clearRandomnessAccount(selectedCharacter.id);
 
-    throw lastError
-  }
+				const result = anchorDiceResultToModel(
+					await parseRevealReturnFromTx(signature),
+				);
+				assertValidDiceResult(result, diceSize);
+				await logDiceRollingStateDebug(diceRollingStatePda, result);
+				return result;
+			} catch (error) {
+				lastError = error;
+				await sleep(REVEAL_RETRY_BACKOFF_MS);
+			}
+		}
 
-  /** Decode dice PDA account data — debug / inspection only; use instruction return for gameplay. */
-  const decodeDiceRollingState = (data: Buffer): DiceResult => {
-    const diceCoder = new BorshAccountsCoder(DiceRollIDL as any)
-    const diceState = diceCoder.decode("DiceRollingState", data) as AnchorDiceRollingState
-    return anchorDiceRollingStateToDiceResult(diceState)
-  }
-  const performDiceAction = async (
-    diceSize: number,
-    successFloor: number,
-    bonus: number,
-  ): Promise<DiceResult> => {
-    await doAction(diceSize, successFloor, bonus)
-    return revealActionResult(diceSize)
-  }
+		throw lastError;
+	};
 
   return {
     createCharacter,
