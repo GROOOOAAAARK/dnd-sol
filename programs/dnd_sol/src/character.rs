@@ -94,6 +94,22 @@ pub struct CharacterStats {
 
 impl CharacterStats {
     pub const SPACE: usize = 1 + 1 + 1 + 1 + 1 + 1 + 2 + 2;
+
+    pub const RULE_27: u8 = 27;
+
+    pub fn _stat_value_to_cost_rule(value: u8) -> u8 {
+        match value {
+            8 => 0,
+            9 => 1,
+            10 => 2,
+            11 => 3,
+            12 => 4,
+            13 => 5,
+            14 => 7,
+            15 => 9,
+            _ => 0,
+        }
+    }
 }
 
 /* Character */
