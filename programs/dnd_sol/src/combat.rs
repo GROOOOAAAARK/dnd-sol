@@ -509,6 +509,24 @@ mod tests {
         assert!(values.iter().any(|value| *value != values[0]));
     }
 
+    /// Regression: the monster to-hit roll must be a full d20. A `die` of 0
+    /// collapsed it to {1, 2}, so the monster could never beat any real AC.
+    #[test]
+    fn monster_to_hit_rolls_a_full_d20() {
+        let player = attack(Some(5), 8, 1, 0);
+        let monster = attack(Some(0), 6, 1, 0);
+        let mut seen = std::collections::BTreeSet::new();
+
+        for value in 0..=255u8 {
+            let mut input = round_input(&player, &monster);
+            input.raw = [value; 32];
+            seen.insert(resolve_round(input).result.monster_hit);
+        }
+
+        assert!(seen.iter().all(|value| (1..=20).contains(value)));
+        assert!(seen.iter().next_back().copied().unwrap() > 2);
+    }
+
     #[test]
     fn round_continues_when_nobody_dies() {
         let player = attack(Some(5), 8, 1, 0);
