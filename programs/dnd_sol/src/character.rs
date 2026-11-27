@@ -174,16 +174,16 @@ impl Character {
     }
 
     fn _is_character_creation_fair(&self) -> Result<bool, Error> {
-        let total_stats = self.stats.strength
-            + self.stats.dexterity
-            + self.stats.constitution
-            + self.stats.intelligence
-            + self.stats.wisdom
-            + self.stats.charisma;
-        if total_stats > 10 {
+        let total_stats_cost = CharacterStats::_stat_value_to_cost_rule(self.stats.strength)
+            + CharacterStats::_stat_value_to_cost_rule(self.stats.dexterity)
+            + CharacterStats::_stat_value_to_cost_rule(self.stats.constitution)
+            + CharacterStats::_stat_value_to_cost_rule(self.stats.intelligence)
+            + CharacterStats::_stat_value_to_cost_rule(self.stats.wisdom)
+            + CharacterStats::_stat_value_to_cost_rule(self.stats.charisma);
+        if total_stats_cost > CharacterStats::RULE_27 {
             return Err(ErrorCodes::StatsTooHigh.into());
         }
-        if total_stats < 10 {
+        if total_stats_cost < CharacterStats::RULE_27 {
             return Err(ErrorCodes::StatsTooLow.into());
         }
         Ok(true)
